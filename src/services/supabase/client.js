@@ -19,8 +19,12 @@ export const supabase = supabaseConfigured
 
 export { safeReturnPath };
 
+// El retorno de OAuth debe llegar al MISMO origen donde empezó el login: el
+// "code verifier" de PKCE vive en el localStorage de ese origen. Si se inicia en
+// 127.0.0.1 o en la IP de red y se vuelve a localhost, el canje falla en silencio.
+// VITE_APP_URL queda solo como respaldo fuera del navegador.
 export function oauthRedirectUrl(returnTo = "/") {
   const configuredBase = import.meta.env.VITE_APP_URL?.replace(/\/$/, "");
-  const base = configuredBase || window.location.origin;
+  const base = typeof window !== "undefined" ? window.location.origin : configuredBase;
   return `${base}/auth/callback?returnTo=${encodeURIComponent(safeReturnPath(returnTo))}`;
 }
