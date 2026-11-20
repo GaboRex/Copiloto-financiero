@@ -2,6 +2,7 @@ import { buildEmptyState } from "../data/mockData.js";
 import { migrateState } from "../services/migrations.js";
 import { RepositoryError } from "./contracts.js";
 import { compareFinanceStates } from "../services/import/localMigration.js";
+import { applyServerBalances, buildFinanceChanges, isEmptyChange } from "./stateDiff.js";
 
 function operationId() {
   return globalThis.crypto?.randomUUID?.() || `operation-${Date.now()}-${Math.random()}`;
@@ -25,15 +26,19 @@ export function createSupabaseFinanceRepository(client, userId) {
       revision = Number(data?.revision) || 0;
       return migrateState(data?.state || buildEmptyState());
     },
-    async apply({ action, nextState }) {
-      const { data, error } = await client.rpc("apply_finance_state", {
-        p_state: nextState,
+    // Envía solo las diferencias. El servidor devuelve la nueva revisión y los
+    // saldos oficiales calculados desde el libro, que reemplazan a los locales.
+    async apply({ action, previousState, nextState }) {
+      const changes = buildFinanceChanges(previousState, nextState);
+      if (isEmptyChange(changes)) return nextState;
+      const { data, error } = await client.rpc("apply_finance_changes", {
+        p_changes: changes,
         p_expected_revision: revision,
-        p_operation_id: action.meta?.operationId || operationId(),
+        p_operation_id: action?.meta?.operationId || operationId(),
       });
       if (error) throw translate(error, "No pudimos guardar los cambios.");
       revision = Number(data?.revision) || revision + 1;
-      return migrateState(data?.state || nextState);
+      return applyServerBalances(nextState, data?.balances);
     },
     async hasRemoteData() {
       const { data, error } = await client.rpc("has_finance_data");

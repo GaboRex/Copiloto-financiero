@@ -42,15 +42,19 @@ test("el repositorio remoto usa RPC autenticadas y conserva revisión", async ()
   const client = { rpc: async (name, args) => {
     calls.push({ name, args });
     if (name === "get_finance_state") return { data: { revision: 4, state }, error: null };
-    if (name === "apply_finance_state") return { data: { revision: 5, state: args.p_state }, error: null };
+    if (name === "apply_finance_changes") return { data: { revision: 5, balances: {} }, error: null };
     if (name === "has_finance_data") return { data: false, error: null };
     if (name === "get_local_import_status") return { data: { status: "completed" }, error: null };
     return { data: { revision: 6, state }, error: null };
   } };
   const repository = createSupabaseFinanceRepository(client, "user-a");
   await repository.load();
-  await repository.apply({ action: { type: "UPDATE_PROFILE", meta: { operationId: "op-1" } }, nextState: state });
-  assert.deepEqual(calls[1], { name: "apply_finance_state", args: { p_state: state, p_expected_revision: 4, p_operation_id: "op-1" } });
+  const nextState = { ...state, profile: { ...state.profile, name: "Ana" } };
+  await repository.apply({ action: { type: "UPDATE_PROFILE", meta: { operationId: "op-1" } }, previousState: state, nextState });
+  assert.deepEqual(calls[1], { name: "apply_finance_changes", args: { p_changes: { upsert: {}, remove: {}, profile: nextState.profile }, p_expected_revision: 4, p_operation_id: "op-1" } });
+  // Sin cambios reales no se llama al servidor.
+  await repository.apply({ action: { type: "NOOP" }, previousState: nextState, nextState });
+  assert.equal(calls.filter((call) => call.name === "apply_finance_changes").length, 1);
   assert.deepEqual(await repository.getImportStatus("hash-1"), { status: "completed" });
 });
 
@@ -90,4 +94,40 @@ test("las rutas privadas, login y callback están instalados", async () => {
   assert.match(app, /path="\/auth\/callback"/);
   assert.match(app, /ProtectedApplication/);
   assert.match(app, /returnTo/);
+});
+
+test("el diff envía solo altas, ediciones y bajas, sin contar saldos calculados", async () => {
+  const { buildFinanceChanges, applyServerBalances } = await import("../src/repositories/stateDiff.js");
+  const before = buildEmptyState();
+  before.accounts = [{ id: "cash", name: "Caja", type: "efectivo", balance: 100 }];
+  before.transactions = [{ id: "t1", type: "gasto", amount: 5, accountId: "cash" }, { id: "t2", type: "gasto", amount: 7, accountId: "cash" }];
+  before.recurringIncomes = [{ id: "r1", name: "Sueldo", amount: 10 }];
+  const after = structuredClone(before);
+  after.accounts[0].balance = 50; // solo cambia el saldo: no es una edición de la cuenta
+  after.transactions = [{ ...before.transactions[0], amount: 6 }, { id: "t3", type: "ingreso", amount: 1, accountId: "cash" }];
+  after.recurringIncomes = [];
+  after.sectionGuidesSeen = { inicio: true };
+  const changes = buildFinanceChanges(before, after);
+  assert.deepEqual(changes.upsert, { transactions: [after.transactions[0], after.transactions[1]] });
+  assert.deepEqual(changes.remove, { transactions: ["t2"], recurring: ["r1"] });
+  assert.equal(changes.profile, undefined);
+  assert.deepEqual(Object.keys(changes.settings), ["emergencyFund", "financialSettings", "sectionGuidesSeen", "currencyHistory"]);
+  assert.equal(applyServerBalances(after, { cash: "42.10" }).accounts[0].balance, 42.1);
+});
+
+test("al cerrar sesión se borran solo los datos locales ya importados", async () => {
+  const { clearImportedLocalData } = await import("../src/services/import/localMigration.js");
+  const values = new Map([
+    ["copiloto-financiero:estado-financiero-v1", "{}"],
+    ["copiloto-financiero:migration-backup-browser-v2-abc", "{}"],
+    ["sb-project-auth-token", "token"],
+    ["otra-app", "x"],
+  ]);
+  const storage = {
+    get length() { return values.size; },
+    key: (index) => [...values.keys()][index] ?? null,
+    removeItem: (key) => values.delete(key),
+  };
+  clearImportedLocalData(storage);
+  assert.deepEqual([...values.keys()], ["sb-project-auth-token", "otra-app"]);
 });

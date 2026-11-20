@@ -28,31 +28,59 @@ Este proyecto usa Vite, por eso las variables públicas llevan el prefijo `VITE_
 
 Nunca colocar una `service_role` en una variable `VITE_*` ni en código cliente.
 
-## Configuración manual de Supabase y Google
+## Probar sin Supabase (modo local)
 
-1. Crear un proyecto Supabase de desarrollo y elegir región.
-2. Instalar la CLI de Supabase, ejecutar `supabase start` y después `supabase db reset` para aplicar `supabase/migrations/202609150001_finance_auth_schema.sql` localmente.
-3. Ejecutar `supabase test db` para validar `supabase/tests/rls.sql` con usuarios aislados. Revisar el SQL antes de vincular cualquier proyecto remoto.
-4. En Google Cloud, configurar la pantalla de consentimiento OAuth.
-5. Crear credenciales Web OAuth 2.0.
-6. En Google, autorizar la URL callback que muestra Supabase para el proveedor Google.
-7. En Supabase Authentication > Providers, habilitar Google con el Client ID y Client Secret.
-8. En Supabase Authentication > URL Configuration, añadir `http://localhost:5173/auth/callback`, las URLs de preview autorizadas y la URL de producción.
-9. Configurar las tres variables públicas en Development, Preview y Production de Vercel.
-10. Revisar política de privacidad, retención, exportación y eliminación antes de producción.
+Crear `.env.local` con una sola línea y arrancar:
 
-RLS está habilitado en todas las tablas financieras. Las políticas permiten `select`, `insert`, `update` y `delete` solo cuando `auth.uid() = user_id`; las claves foráneas compuestas refuerzan que las relaciones pertenezcan al mismo usuario. Los RPC usan `security invoker`, requieren una sesión autenticada y no dependen de una clave administrativa.
+```sh
+VITE_DATA_MODE=local
+```
+
+```sh
+npm install
+npm run dev
+```
+
+Los datos se guardan solo en ese navegador. Sirve para trabajar la UI sin credenciales.
+
+## Crear el proyecto de Supabase
+
+1. En https://supabase.com crear un proyecto (región cercana, por ejemplo São Paulo) y guardar la contraseña de la base.
+2. En **SQL Editor**, ejecutar en orden el contenido de:
+   1. `supabase/migrations/202609150001_finance_auth_schema.sql`
+   2. `supabase/migrations/202611200001_incremental_sync.sql`
+
+   Alternativa con CLI (no necesita Docker): `npx supabase login`, `npx supabase link --project-ref <ref>` y `npx supabase db push`.
+3. En **Project Settings > API** copiar la *Project URL* y la clave *anon public*.
+4. En Google Cloud Console: crear proyecto, configurar la pantalla de consentimiento OAuth (tipo *External*, con tu correo como usuario de prueba) y crear credenciales *OAuth client ID* de tipo *Web application*.
+   - *Authorized JavaScript origins*: `http://localhost:5173`
+   - *Authorized redirect URIs*: `https://<ref>.supabase.co/auth/v1/callback` (la muestra Supabase en Authentication > Providers > Google).
+5. En Supabase **Authentication > Providers > Google**: activar y pegar Client ID y Client Secret.
+6. En Supabase **Authentication > URL Configuration**: *Site URL* `http://localhost:5173` y en *Redirect URLs* `http://localhost:5173/auth/callback` (más adelante, también la URL de Vercel).
+7. Crear `.env.local`:
+
+   ```sh
+   VITE_SUPABASE_URL=https://<ref>.supabase.co
+   VITE_SUPABASE_ANON_KEY=<anon public>
+   VITE_APP_URL=http://localhost:5173
+   VITE_DATA_MODE=supabase
+   ```
+8. Reiniciar `npm run dev` e ingresar con Google.
+9. Opcional: `npx supabase test db` ejecuta `supabase/tests/rls.sql` (pgTAP; requiere Docker).
+10. Antes de producción: configurar las mismas variables en Vercel y revisar privacidad, retención, exportación y eliminación de datos.
+
+RLS está habilitado en todas las tablas financieras y el rol `authenticated` solo puede **leer** sus propias filas (`auth.uid() = user_id`). Toda escritura pasa por las funciones `apply_finance_changes` e `import_local_finance_state` (`SECURITY DEFINER`, validan `auth.uid()` y filtran por `user_id`); las claves foráneas compuestas impiden relacionar datos de otro usuario. Nunca usar la clave `service_role` en el cliente.
 
 ## Desarrollo y pruebas
 
 ```sh
-pnpm install
-pnpm test
-pnpm build
-pnpm dev
+npm install
+npm test
+npm run build
+npm run dev
 ```
 
-Para revisar la UI sin credenciales se puede usar `VITE_DATA_MODE=local`. Para probar OAuth, usar usuarios de prueba y un proyecto Supabase de desarrollo.
+`npm test` incluye las pruebas SQL en Postgres embebido (no requieren Docker ni credenciales).
 
 ## Migración del navegador
 
@@ -62,7 +90,19 @@ Al terminar, la aplicación compara cantidades, relaciones y saldos redondeados 
 
 ## Saldo e integridad
 
-El saldo remoto se deriva de `transaction_entries`. `apply_finance_state` ejecuta la cuenta y el movimiento inicial en una sola transacción, usa revisión optimista e idempotencia y reconcilia cuentas antiguas mediante un ajuste `migration_balance`. `initial_balance`, ajustes y transferencias siguen excluidos de los ingresos operativos por los servicios de dominio.
+Cada acción de la app envía al servidor solo lo que cambió (`apply_finance_changes`: altas/ediciones y bajas por id), no el estado completo. El servidor deriva los saldos de `transaction_entries` y devuelve los saldos oficiales; el saldo calculado en el navegador nunca se guarda. En ingresos y gastos el efecto en el saldo se deriva del tipo y el monto; ajustes y transferencias llevan `balanceDelta`, que debe coincidir con el monto.
+
+- **Revisión optimista:** si otro dispositivo guardó antes (error 40001), la app recarga el estado, reaplica la misma acción y reintenta una vez.
+- **Idempotencia:** `applied_operations` guarda solo la revisión por operación y se poda a 30 días.
+- **Permisos:** el rol `authenticated` solo puede leer tablas. Toda escritura pasa por funciones `SECURITY DEFINER` que validan `auth.uid()` y filtran por `user_id`.
+- **Importación:** `apply_finance_state` (estado completo) queda reservada a `import_local_finance_state` y concilia cuentas antiguas con un ajuste `migration_balance` recalculado de forma idempotente.
+- **Cierre de sesión:** si los datos del navegador ya se importaron y verificaron, se borran del equipo.
+
+`initial_balance`, ajustes y transferencias siguen excluidos de los ingresos operativos por los servicios de dominio.
+
+### Pruebas SQL sin Docker
+
+`tests/supabase-sql.test.js` ejecuta todas las migraciones en Postgres embebido (PGlite) con un esquema `auth` mínimo y prueba las RPC como el rol `authenticated`: saldos, conflictos, permisos, aislamiento entre usuarios, importación y un flujo de dos dispositivos con el reducer real. `supabase/tests/rls.sql` (pgTAP) sigue siendo la prueba de referencia contra Supabase real.
 
 ## Limitaciones
 

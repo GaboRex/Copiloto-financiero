@@ -88,3 +88,20 @@ export function removeMigratedLocalData(backupKey) {
   clearState(LOCAL_STATE_KEY);
   if (backupKey) clearState(backupKey);
 }
+
+// Borra del navegador los datos financieros que ya están verificados en la nube
+// (estado local y todas las copias de respaldo de migración). Se usa al cerrar
+// sesión para no dejar información financiera en equipos compartidos.
+export function clearImportedLocalData(storage = globalThis.localStorage) {
+  if (!storage) return;
+  try {
+    const keys = [];
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+      if (key === `copiloto-financiero:${LOCAL_STATE_KEY}` || key?.startsWith("copiloto-financiero:migration-backup-")) keys.push(key);
+    }
+    keys.forEach((key) => storage.removeItem(key));
+  } catch (error) {
+    console.error("No se pudo limpiar la copia local", error);
+  }
+}
