@@ -15,9 +15,22 @@ export function Card({ children, className = "", title, action }) {
   );
 }
 
+export const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2 focus-visible:ring-offset-paper";
+
+// Botón solo-icono con área táctil de 40px aunque el icono sea pequeño.
+export function IconButton({ label, tone = "neutral", className = "", children, ...props }) {
+  const tones = { neutral: "hover:text-teal", danger: "hover:text-brick" };
+  return (
+    <button type="button" aria-label={label} title={label} className={`h-10 w-10 -my-1.5 inline-grid place-items-center rounded text-ink-soft hover:bg-paper-raised ${tones[tone]} shrink-0 ${focusRing} ${className}`} {...props}>
+      {children}
+    </button>
+  );
+}
+
 export function Button({ children, variant = "primary", size = "md", className = "", ...props }) {
-  const base = "inline-flex items-center justify-center gap-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
-  const sizes = { sm: "text-xs px-2.5 py-1.5", md: "text-sm px-4 py-2", lg: "text-base px-5 py-2.5" };
+  const base = `inline-flex items-center justify-center gap-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${focusRing}`;
+  // Alturas mínimas pensadas para dedo: 40px en sm y 44px en md/lg dentro del móvil.
+  const sizes = { sm: "text-xs px-3 py-2 min-h-[40px] sm:min-h-[34px]", md: "text-sm px-4 py-2 min-h-[44px] sm:min-h-[40px]", lg: "text-base px-5 py-2.5 min-h-[48px]" };
   const variants = {
     primary: "bg-ink text-paper hover:bg-[#34443E]",
     secondary: "bg-transparent text-ink border border-ink hover:bg-paper-raised",
@@ -57,12 +70,12 @@ export function Modal({ open, onClose, title, children }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 p-0 sm:p-4">
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} className="bg-paper w-full sm:max-w-lg sm:rounded border border-line max-h-[90vh] overflow-y-auto">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} className="bg-paper w-full sm:max-w-lg rounded-t-xl sm:rounded border border-line max-h-[90vh] overflow-y-auto pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-center justify-between px-5 py-4 border-b border-line sticky top-0 bg-paper">
           <h2 id={titleId} className="font-display font-semibold text-[1.05rem]">{title}</h2>
-          <button onClick={onClose} className="text-ink-soft hover:text-ink" aria-label={`Cerrar ${title}`}>
+          <IconButton onClick={onClose} label={`Cerrar ${title}`} className="-mr-2">
             <X size={18} aria-hidden="true" />
-          </button>
+          </IconButton>
         </div>
         <div className="p-5">{children}</div>
       </div>
@@ -79,11 +92,14 @@ export function Field({ label, children }) {
   );
 }
 
+// 16px en móvil evita que iOS haga zoom al enfocar; 14px desde sm.
 const inputClass =
-  "font-sans text-sm px-3 py-2 border border-line rounded bg-paper-raised text-ink focus:outline-none focus:ring-2 focus:ring-teal";
+  "font-sans text-base sm:text-sm px-3 py-2 min-h-[44px] sm:min-h-[38px] border border-line-strong rounded bg-paper-raised text-ink placeholder:text-ink-soft/70 focus:outline-none focus:ring-2 focus:ring-teal focus:border-teal";
 
-export function Input({ className = "", ...props }) {
-  return <input className={`${inputClass} ${className}`} {...props} />;
+export function Input({ className = "", inputMode, ...props }) {
+  // Montos: teclado numérico con separador decimal en móviles.
+  const mode = inputMode || (props.type === "number" ? (String(props.step || "").includes(".") ? "decimal" : "numeric") : undefined);
+  return <input className={`${inputClass} ${className}`} inputMode={mode} {...props} />;
 }
 
 export function Select({ children, className = "", ...props }) {

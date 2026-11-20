@@ -63,7 +63,7 @@ export default function Configuracion() {
 
       <Card title="Cuentas y saldos">
         <p className="text-sm text-ink-soft mb-3">Edita cuentas, tarjetas y registra ajustes de saldo con historial.</p>
-        <Link to="/cuentas" className="text-ochre text-sm underline">Administrar cuentas</Link>
+        <Link to="/cuentas" className="text-ochre-ink text-sm underline">Administrar cuentas</Link>
       </Card>
 
       <Card title="Ayuda">

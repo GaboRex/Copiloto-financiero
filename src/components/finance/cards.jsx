@@ -1,7 +1,7 @@
 import React from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { fmtBs, fmtFecha, fmtPct } from "../../services/financial/format.js";
-import { ProgressBar, Badge } from "../ui/primitives.jsx";
+import { ProgressBar, Badge, IconButton } from "../ui/primitives.jsx";
 import { goalProgress, estimateGoalCompletion } from "../../services/financial/goals.js";
 
 export function AccountCard({ account, currency = account.currency, onDelete, onEdit }) {
@@ -10,7 +10,7 @@ export function AccountCard({ account, currency = account.currency, onDelete, on
     <div className="border border-line rounded p-4 flex flex-col gap-1 bg-paper">
       <div className="flex items-center justify-between">
         <span className="font-medium text-sm">{account.name}</span>
-        <div className="flex gap-2">{onEdit ? <button onClick={onEdit} className="text-ink-soft hover:text-teal" aria-label={`Editar ${account.name}`}><Pencil size={14} /></button> : null}{onDelete ? <button onClick={onDelete} className="text-ink-soft hover:text-brick" aria-label={`Eliminar ${account.name}`}><Trash2 size={14} /></button> : null}</div>
+        <div className="flex -mr-2">{onEdit ? <IconButton onClick={onEdit} label={`Editar ${account.name}`}><Pencil size={16} aria-hidden="true" /></IconButton> : null}{onDelete ? <IconButton onClick={onDelete} tone="danger" label={`Eliminar ${account.name}`}><Trash2 size={16} aria-hidden="true" /></IconButton> : null}</div>
       </div>
       <div className={`font-display text-xl font-semibold ${isCard ? "text-brick" : "text-teal"}`}>
         {fmtBs(Math.abs(account.balance), currency)}
@@ -35,8 +35,8 @@ export function TransactionItem({ tx, categoryName, accountName, currency = "BOB
       <div className={`font-medium tabular-nums ${isIngreso ? "text-teal" : "text-ink"}`}>
         {isIngreso ? "+" : "−"} {fmtBs(tx.amount, currency)}
       </div>
-      {onEdit ? <button onClick={onEdit} className="text-ink-soft hover:text-teal shrink-0" aria-label={`Editar ${tx.description}`}><Pencil size={14} /></button> : null}
-      {onDelete ? <button onClick={onDelete} className="text-ink-soft hover:text-brick shrink-0" aria-label={`Eliminar ${tx.description}`}><Trash2 size={14} /></button> : null}
+      {onEdit ? <IconButton onClick={onEdit} label={`Editar ${tx.description}`}><Pencil size={16} aria-hidden="true" /></IconButton> : null}
+      {onDelete ? <IconButton onClick={onDelete} tone="danger" label={`Eliminar ${tx.description}`}><Trash2 size={16} aria-hidden="true" /></IconButton> : null}
     </div>
   );
 }
@@ -48,7 +48,7 @@ export function GoalCard({ goal, currency = "BOB", onDelete, onOpen, onAdd, onEd
     <div className="border border-line rounded p-4 flex flex-col gap-2 bg-paper">
       <div className="flex items-center justify-between">
         <span className="font-medium text-sm">{goal.name}</span>
-        <div className="flex gap-2">{onEdit ? <button onClick={onEdit} className="text-ink-soft hover:text-teal" aria-label={`Editar ${goal.name}`}><Pencil size={14} /></button> : null}{onDelete ? <button onClick={onDelete} className="text-ink-soft hover:text-brick" aria-label={`Eliminar ${goal.name}`}><Trash2 size={14} /></button> : null}</div>
+        <div className="flex -mr-2">{onEdit ? <IconButton onClick={onEdit} label={`Editar ${goal.name}`}><Pencil size={16} aria-hidden="true" /></IconButton> : null}{onDelete ? <IconButton onClick={onDelete} tone="danger" label={`Eliminar ${goal.name}`}><Trash2 size={16} aria-hidden="true" /></IconButton> : null}</div>
       </div>
       <div className="text-ink-soft text-xs">
         {fmtBs(goal.current, currency)} de {fmtBs(goal.target, currency)} · {fmtPct(progresoPct)}
@@ -60,12 +60,12 @@ export function GoalCard({ goal, currency = "BOB", onDelete, onOpen, onAdd, onEd
           : `A ${fmtBs(goal.monthlyContribution, currency)}/mes, la alcanzas en ${est.months} meses (${est.date.toLocaleDateString("es-BO", { month: "long", year: "numeric" })}).`}
       </div>
       {onAdd && (
-        <button onClick={onAdd} className="text-ochre text-xs underline text-left mt-1">
+        <button onClick={onAdd} className="text-ochre-ink text-sm underline underline-offset-2 text-left py-2.5 min-h-[40px] self-start">
           Registrar aporte
         </button>
       )}
       {onOpen && (
-        <button onClick={onOpen} className="text-ochre text-xs underline text-left mt-1">
+        <button onClick={onOpen} className="text-ochre-ink text-sm underline underline-offset-2 text-left py-2.5 min-h-[40px] self-start">
           Simular otro aporte
         </button>
       )}
@@ -79,7 +79,7 @@ export function DebtCard({ debt, currency = "BOB", onDelete, onSimulate, onPay, 
     <div className="border border-line rounded p-4 flex flex-col gap-1.5 bg-paper">
       <div className="flex items-center justify-between">
         <span className="font-medium text-sm">{debt.name}</span>
-        <div className="flex gap-2">{onEdit ? <button onClick={onEdit} className="text-ink-soft hover:text-teal" aria-label={`Editar ${debt.name}`}><Pencil size={14} /></button> : null}{onDelete ? <button onClick={onDelete} className="text-ink-soft hover:text-brick" aria-label={`Eliminar ${debt.name}`}><Trash2 size={14} /></button> : null}</div>
+        <div className="flex -mr-2">{onEdit ? <IconButton onClick={onEdit} label={`Editar ${debt.name}`}><Pencil size={16} aria-hidden="true" /></IconButton> : null}{onDelete ? <IconButton onClick={onDelete} tone="danger" label={`Eliminar ${debt.name}`}><Trash2 size={16} aria-hidden="true" /></IconButton> : null}</div>
       </div>
       <div className="text-ink-soft text-xs">{debt.entity}</div>
       <div className="font-display text-lg font-semibold">{fmtBs(debt.balance, currency)}</div>
@@ -88,12 +88,12 @@ export function DebtCard({ debt, currency = "BOB", onDelete, onSimulate, onPay, 
         {debt.remainingInstallments ? ` · ${debt.remainingInstallments} cuotas restantes` : ""}
       </div>
       {onSimulate && (
-        <button onClick={onSimulate} className="text-ochre text-xs underline text-left mt-1">
+        <button onClick={onSimulate} className="text-ochre-ink text-sm underline underline-offset-2 text-left py-2.5 min-h-[40px] self-start">
           Simular pago adicional
         </button>
       )}
       {onPay && (
-        <button onClick={onPay} className="text-ochre text-xs underline text-left mt-1">
+        <button onClick={onPay} className="text-ochre-ink text-sm underline underline-offset-2 text-left py-2.5 min-h-[40px] self-start">
           Registrar pago
         </button>
       )}

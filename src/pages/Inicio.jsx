@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeftRight, ArrowRight, BarChart3, Bot, Check, Circle, ShoppingBag, Target, WalletCards } from "lucide-react";
+import { ArrowLeftRight, ArrowRight, BarChart3, Bot, Check, ChevronRight, Circle, Minus, Plus, ShoppingBag, Target, WalletCards } from "lucide-react";
 import { useFinanceState } from "../context/FinanceContext.jsx";
 import { Button, Card, ProgressBar } from "../components/ui/primitives.jsx";
 import { FinancialScoreGauge } from "../components/finance/FinancialScoreGauge.jsx";
@@ -19,18 +19,39 @@ export default function Inicio() {
   const navigate = useNavigate();
   const readiness = getFinancialDataReadiness(state);
   const hasAccounts = state.accounts.some((account) => account.type !== "tarjeta_credito");
-  return <div className="flex flex-col gap-6">
-    <div><h1 className="font-display text-2xl font-semibold">Hola, {state.profile.name}</h1><p className="text-ink-soft text-sm mt-0.5">Este es tu espacio para entender y mejorar tus finanzas.</p></div>
+  const today = new Date().toLocaleDateString("es-BO", { weekday: "long", day: "numeric", month: "long" });
+  const showSummary = hasFinancialData(state);
+  return <div className="flex flex-col gap-5 md:gap-6">
+    <div><p className="text-ink-soft text-sm first-letter:uppercase">{today}</p><h1 className="font-display text-2xl font-semibold">Hola, {state.profile.name}</h1></div>
+    {/* Lo primero que se ve: cuánto puedo gastar y cómo registrar un movimiento. */}
+    {hasAccounts ? <AvailableHero state={state} navigate={navigate} /> : null}
     {!hasAccounts ? <Card><p className="font-display text-lg font-semibold">Añade dónde guardas tu dinero</p><p className="text-ink-soft text-sm mt-2">Necesitas al menos una cuenta de activo para calcular saldos y proyecciones.</p><Button className="mt-4" onClick={() => navigate("/cuentas")}>Añadir cuenta</Button></Card> : null}
     {hasAccounts && !readiness.firstMovements.complete ? <FirstMovementsCard progress={readiness.firstMovements} navigate={navigate} /> : null}
-    <div className="grid sm:grid-cols-2 gap-4">
-      <HighlightedAccess icon={ShoppingBag} title="¿Puedo comprarlo?" text="Evalúa una compra con tus compromisos, reserva y objetivos." onClick={() => navigate("/puedo-comprarlo")} />
-      <HighlightedAccess icon={Bot} title="Preguntar al Copiloto" text="Consulta tus finanzas y recibe respuestas con cifras." onClick={() => navigate("/copiloto")} />
+    <div className="grid sm:grid-cols-2 gap-3">
+      <HighlightedAccess icon={ShoppingBag} title="¿Puedo comprarlo?" text="Evalúa una compra antes de hacerla." onClick={() => navigate("/puedo-comprarlo")} />
+      <HighlightedAccess icon={Bot} title="Preguntar al Copiloto" text="Respuestas con tus propias cifras." onClick={() => navigate("/copiloto")} />
     </div>
-    {hasFinancialData(state) ? <FinancialSummary state={state} navigate={navigate} readiness={readiness} /> : null}
+    {showSummary ? <FinancialSummary state={state} navigate={navigate} readiness={readiness} /> : null}
     <WhatYouCanDo state={state} navigate={navigate} />
     <SectionGuide section="home" />
   </div>;
+}
+
+function AvailableHero({ state, navigate }) {
+  const { totalBalance, committed, available } = calculateAvailableMoney(state);
+  const currency = state.profile.currency;
+  return <section aria-labelledby="available-title" className="rounded-lg bg-teal text-paper p-5 md:p-6 shadow-card">
+    <div className="flex items-start justify-between gap-3">
+      <h2 id="available-title" className="text-sm text-paper/85">Disponible para gastar</h2>
+      <button onClick={() => navigate("/cuentas")} aria-label="Ver y editar cuentas" className="-mt-2 -mr-2 inline-flex items-center gap-0.5 rounded px-2 min-h-[40px] text-sm text-paper/85 hover:text-paper hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-paper">Cuentas<ChevronRight size={16} aria-hidden="true" /></button>
+    </div>
+    <p className={`font-display text-4xl md:text-5xl font-semibold tabular-nums mt-1 ${available < 0 ? "text-[#F6C9BE]" : ""}`}>{fmtBs(available, currency)}</p>
+    <p className="text-sm text-paper/85 mt-2 tabular-nums">{fmtBs(totalBalance, currency)} en cuentas · {fmtBs(committed, currency)} comprometido en 30 días</p>
+    <div className="grid grid-cols-2 gap-2 mt-5">
+      <button onClick={() => navigate("/movimientos?nuevo=gasto")} className="min-h-[48px] rounded bg-paper text-ink font-medium inline-flex items-center justify-center gap-2 hover:bg-paper-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-paper focus-visible:ring-offset-2 focus-visible:ring-offset-teal"><Minus size={18} aria-hidden="true" />Gasto</button>
+      <button onClick={() => navigate("/movimientos?nuevo=ingreso")} className="min-h-[48px] rounded border border-paper/60 text-paper font-medium inline-flex items-center justify-center gap-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-paper focus-visible:ring-offset-2 focus-visible:ring-offset-teal"><Plus size={18} aria-hidden="true" />Ingreso</button>
+    </div>
+  </section>;
 }
 
 function FirstMovementsCard({ progress, navigate }) {
@@ -48,11 +69,10 @@ function FirstMovementsCard({ progress, navigate }) {
 
 function ProgressItem({ done, children }) { const Icon = done ? Check : Circle; return <span className={`flex items-center gap-2 ${done ? "text-teal" : "font-medium"}`}><Icon size={15} aria-hidden="true" />{children}</span>; }
 
-function HighlightedAccess({ icon: Icon, title, text, onClick }) { return <button onClick={onClick} className="text-left border border-line rounded p-5 bg-paper hover:bg-paper-raised transition-colors flex items-start gap-4"><span className="w-10 h-10 rounded-full bg-teal/10 flex items-center justify-center shrink-0"><Icon size={18} className="text-teal" aria-hidden="true" /></span><span><span className="font-display font-semibold block">{title}</span><span className="text-ink-soft text-sm mt-0.5 block">{text}</span></span></button>; }
+function HighlightedAccess({ icon: Icon, title, text, onClick }) { return <button onClick={onClick} className="text-left border border-line rounded p-4 bg-paper hover:bg-paper-raised transition-colors flex items-center gap-3 min-h-[64px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal"><span className="w-10 h-10 rounded-full bg-teal/10 flex items-center justify-center shrink-0"><Icon size={18} className="text-teal" aria-hidden="true" /></span><span className="flex-1 min-w-0"><span className="font-display font-semibold block">{title}</span><span className="text-ink-soft text-sm block">{text}</span></span><ChevronRight size={18} className="text-ink-soft shrink-0" aria-hidden="true" /></button>; }
 
 function FinancialSummary({ state, navigate, readiness }) {
   const health = calculateFinancialHealth(state);
-  const { totalBalance, committed, available } = calculateAvailableMoney(state);
   const month = readiness.latestMonth;
   const comparison = readiness.comparison?.available ? readiness.comparison : null;
   const savingsRealized = getSavingsRealized(state);
@@ -60,13 +80,12 @@ function FinancialSummary({ state, navigate, readiness }) {
   const projection = readiness.monthEndProjection;
   return <div className="flex flex-col gap-5">
     <div className="grid md:grid-cols-2 gap-5">
-      <Card title="Salud financiera">{!health.available ? <MissingState title="Salud financiera aún no disponible" text={`Falta: ${health.missing.join(", ")}.`} onClick={() => navigate("/analisis?config=health")} /> : <><FinancialScoreGauge score={health.score} /><p className="text-sm text-ink-soft mt-3">{health.resumen} Confianza {health.confidence}.</p><div className="mt-4 flex flex-col gap-2">{Object.entries(health.breakdown).map(([key, item]) => <div key={key}><div className="flex justify-between text-xs mb-1"><span>{BREAKDOWN_LABELS[key]} · {Math.round(item.weight * 100)}%</span><span>{item.score}%</span></div><ProgressBar value={item.score} /></div>)}</div><Link to="/analisis" className="text-ochre text-xs underline mt-3 inline-block">Ver criterios y acciones</Link></>}</Card>
-      <Card title="Dinero disponible"><div className="font-display text-3xl font-semibold text-teal">{fmtBs(available, state.profile.currency)}</div><p className="text-ink-soft text-xs mt-1">Saldo de activos menos compromisos de los próximos 30 días.</p><div className="mt-4 flex flex-col gap-2 text-sm"><MoneyRow label="Saldo total de activos" value={totalBalance} currency={state.profile.currency} /><MoneyRow label="Comprometido" value={-committed} currency={state.profile.currency} /><MoneyRow label="Disponible" value={available} currency={state.profile.currency} strong /></div><Button className="mt-4" size="sm" variant="secondary" onClick={() => navigate("/cuentas")}>Ver y editar cuentas</Button></Card>
+      <Card title="Salud financiera">{!health.available ? <MissingState title="Salud financiera aún no disponible" text={`Falta: ${health.missing.join(", ")}.`} onClick={() => navigate("/analisis?config=health")} /> : <><FinancialScoreGauge score={health.score} /><p className="text-sm text-ink-soft mt-3">{health.resumen} Confianza {health.confidence}.</p><div className="mt-4 flex flex-col gap-2">{Object.entries(health.breakdown).map(([key, item]) => <div key={key}><div className="flex justify-between text-xs mb-1"><span>{BREAKDOWN_LABELS[key]} · {Math.round(item.weight * 100)}%</span><span>{item.score}%</span></div><ProgressBar value={item.score} /></div>)}</div><Link to="/analisis" className="text-ochre-ink text-sm underline underline-offset-2 mt-3 inline-flex items-center min-h-[40px]">Ver criterios y acciones</Link></>}</Card>
       <Card title="Resumen mensual"><div className="flex flex-col gap-2 text-sm"><MoneyRow label="Ingresos del mes" value={month.ingresos} currency={state.profile.currency} /><MoneyRow label="Gastos del mes" value={-month.gastos} currency={state.profile.currency} /><MoneyRow label="Balance neto del mes" value={month.balanceNeto} currency={state.profile.currency} strong /><MoneyRow label="Ahorro realizado" value={savingsRealized} currency={state.profile.currency} /></div>{comparison ? <p className="text-xs text-ink-soft mt-3">Comparación equivalente: {comparison.current.start} a {comparison.current.end} frente a {comparison.previous.start} a {comparison.previous.end}.</p> : <p className="text-xs text-ink-soft mt-3">La comparación aparecerá cuando ambos periodos tengan ingresos y gastos reales.</p>}</Card>
-      <Card title="Proyección al cierre del mes">{!projection.available ? <MissingState title="Proyección aún no disponible" text={`Falta: ${projection.missing.join(", ")}.`} onClick={() => navigate("/analisis?config=projection")} /> : <><div className="font-display text-3xl font-semibold">{fmtBs(projection.end, state.profile.currency)}</div><p className="text-ink-soft text-sm mt-1">Del {projection.startDate} al {projection.endDate} · {plural(projection.days, "día", "días")} · confianza {projection.confidence}.</p><Link to="/analisis" className="text-ochre text-xs underline mt-2 inline-block">Ver fórmula y próximos 30 días</Link></>}</Card>
+      <Card title="Proyección al cierre del mes" className="md:col-span-2">{!projection.available ? <MissingState title="Proyección aún no disponible" text={`Falta: ${projection.missing.join(", ")}.`} onClick={() => navigate("/analisis?config=projection")} /> : <><div className="font-display text-3xl font-semibold">{fmtBs(projection.end, state.profile.currency)}</div><p className="text-ink-soft text-sm mt-1">Del {projection.startDate} al {projection.endDate} · {plural(projection.days, "día", "días")} · confianza {projection.confidence}.</p><Link to="/analisis" className="text-ochre-ink text-sm underline underline-offset-2 mt-2 inline-flex items-center min-h-[40px]">Ver fórmula y próximos 30 días</Link></>}</Card>
     </div>
     <Card title="Próximos compromisos"><div className="flex flex-col">{commitments.map((item) => <div key={`${item.id}-${item.date}`} className="grid grid-cols-[1fr_auto_auto] gap-3 py-2 border-b border-dotted border-line last:border-none text-sm"><span>{item.name}</span><span className="text-ink-soft">{fmtFecha(item.date)}</span><span className="tabular-nums">− {fmtBs(item.amount, state.profile.currency)}</span></div>)}{commitments.length === 0 ? <p className="text-ink-soft text-sm">No hay compromisos próximos registrados. Añádelos en Movimientos o Planes.</p> : null}</div></Card>
-    <Card title="Tu principal insight"><InsightCard insight={getMainInsight(state)} /><Link to="/analisis" className="text-ochre text-xs underline mt-3 inline-block">Ver análisis</Link></Card>
+    <Card title="Tu principal insight"><InsightCard insight={getMainInsight(state)} /><Link to="/analisis" className="text-ochre-ink text-sm underline underline-offset-2 mt-3 inline-flex items-center min-h-[40px]">Ver análisis</Link></Card>
   </div>;
 }
 

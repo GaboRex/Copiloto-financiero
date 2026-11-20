@@ -184,6 +184,8 @@ test("Cuentas está en la navegación visible y enlazada desde Inicio", async ()
   assert.match(mobile, /MAIN_NAV/);
   assert.match(navigation, /\/cuentas/);
   assert.match(home, /Ver y editar cuentas/);
+  const shell = await readFile(new URL("../src/layout/AppShell.jsx", import.meta.url), "utf8");
+  assert.match(shell, /to="\/cuentas"/, "en móvil Cuentas debe estar en el encabezado");
 });
 
 test("cuentas, movimientos, objetivos y deudas tienen operaciones de edición trazables", async () => {

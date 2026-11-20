@@ -56,7 +56,7 @@ export default function Copiloto() {
           <summary className="text-xs font-medium cursor-pointer flex items-center gap-1.5 mb-2"><Lightbulb size={13} aria-hidden="true" /> Sugerencias</summary>
           <div className="flex flex-wrap gap-2">
             {SUGERENCIAS.map((s) => (
-              <button key={s} onClick={() => enviar(s)} className="text-xs border border-line rounded px-2.5 py-1.5 hover:bg-paper-raised">
+              <button key={s} onClick={() => enviar(s)} className="text-sm border border-line-strong/60 rounded-full px-3.5 py-2 min-h-[40px] text-left hover:bg-paper-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal">
                 {s}
               </button>
             ))}
