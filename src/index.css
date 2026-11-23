@@ -42,6 +42,27 @@ body {
   border-radius: 6px;
 }
 
+/* ---- Mascota (CopilotBot) y escena del login ---- */
+.bot-float { animation: bot-float 4s ease-in-out infinite; }
+.bot-shadow { transform-box: fill-box; transform-origin: center; animation: bot-shadow 4s ease-in-out infinite; }
+.bot-blink { transform-box: fill-box; transform-origin: center; animation: bot-blink 4.6s ease-in-out infinite; }
+.bot-wave { transform-box: view-box; transform-origin: 108px 112px; animation: bot-wave 3.2s ease-in-out infinite; }
+.bot-halo { transform-box: fill-box; transform-origin: center; animation: bot-halo 2.2s ease-out infinite; }
+.bot-halo-fast { animation-duration: 0.9s; }
+.bot-orbit { animation: bot-orbit 28s linear infinite; }
+.bot-orbit-reverse { animation: bot-orbit 40s linear infinite reverse; }
+.bot-coin { animation: bot-bob 3.4s ease-in-out infinite; }
+.bot-bubble { animation: bot-bubble 520ms cubic-bezier(0.2, 0.9, 0.3, 1.4) 600ms backwards; transform-origin: 50% 100%; }
+
+@keyframes bot-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes bot-shadow { 0%, 100% { transform: scaleX(1); opacity: 0.22; } 50% { transform: scaleX(0.8); opacity: 0.12; } }
+@keyframes bot-blink { 0%, 91%, 100% { transform: scaleY(1); } 94% { transform: scaleY(0.1); } }
+@keyframes bot-wave { 0%, 55%, 100% { transform: rotate(0deg); } 10%, 30% { transform: rotate(-16deg); } 20%, 40% { transform: rotate(10deg); } }
+@keyframes bot-halo { 0% { transform: scale(0.7); opacity: 0.8; } 100% { transform: scale(2.4); opacity: 0; } }
+@keyframes bot-orbit { to { transform: rotate(360deg); } }
+@keyframes bot-bob { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-8px) rotate(8deg); } }
+@keyframes bot-bubble { from { opacity: 0; transform: scale(0.6) translateY(6px); } to { opacity: 1; transform: none; } }
+
 /* Accesibilidad: sin animaciones para quien las desactiva en su sistema. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
