@@ -23,9 +23,12 @@ function Item({ to, label, icon: Icon, end }) {
 export function Sidebar() {
   return (
     <aside className="hidden md:flex md:flex-col w-60 shrink-0 border-r border-line px-3 py-6 gap-6 sticky top-0 h-screen">
-      <div className="px-3">
-        <div className="font-display font-semibold text-lg leading-tight">Copiloto</div>
-        <div className="font-display font-semibold text-lg leading-tight text-teal">Financiero</div>
+      <div className="px-3 flex items-center gap-3">
+        <img src="/favicon.svg" alt="" width="36" height="36" className="rounded-lg shrink-0" />
+        <div>
+          <div className="font-display font-semibold text-lg leading-tight">Copiloto</div>
+          <div className="font-display font-semibold text-lg leading-tight text-teal">Financiero</div>
+        </div>
       </div>
       <nav aria-label="Navegación principal" className="flex flex-col gap-1">
         {MAIN_NAV.map((item) => (

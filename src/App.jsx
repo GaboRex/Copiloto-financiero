@@ -15,6 +15,7 @@ import FlujoDeDinero from "./pages/FlujoDeDinero.jsx";
 import Configuracion from "./pages/Configuracion.jsx";
 import Login from "./pages/Login.jsx";
 import AuthCallback from "./pages/AuthCallback.jsx";
+import Privacidad from "./pages/Privacidad.jsx";
 import { DataStatus } from "./components/DataStatus.jsx";
 import { LocalMigrationPrompt } from "./components/LocalMigrationPrompt.jsx";
 import { LoadingScreen } from "./components/LoadingScreen.jsx";
@@ -23,6 +24,7 @@ export default function App() {
   return <Routes>
     <Route path="/login" element={<Login />} />
     <Route path="/auth/callback" element={<AuthCallback />} />
+    <Route path="/privacidad" element={<Privacidad />} />
     <Route path="/*" element={<ProtectedApplication />} />
   </Routes>;
 }

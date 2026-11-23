@@ -4,6 +4,7 @@ import { Loader2, Lock } from "lucide-react";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { safeReturnPath } from "../auth/authState.js";
 import { CopilotBot } from "../components/brand/CopilotBot.jsx";
+import { SiteFooter } from "../components/SiteFooter.jsx";
 
 function GoogleMark() {
   return <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
@@ -115,6 +116,7 @@ export default function Login() {
       <p className="mt-8 flex items-center justify-center lg:justify-start gap-1.5 text-xs text-ink-soft">
         <Lock size={13} aria-hidden="true" />Nunca pedimos acceso a tu banco.
       </p>
+      <SiteFooter variant="compact" className="mt-3" />
     </section>
   </main>;
 }

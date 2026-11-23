@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Versión simplificada del logo para tamaños pequeños (16–48 px) -->
+  <rect width="64" height="64" rx="15" fill="#1F5C56"/>
+  <line x1="32" y1="16" x2="32" y2="10" stroke="#F3F0E4" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="32" cy="8.5" r="3.5" fill="#E9B65C"/>
+  <rect x="9" y="27" width="5" height="12" rx="2.5" fill="#C1892E"/>
+  <rect x="50" y="27" width="5" height="12" rx="2.5" fill="#C1892E"/>
+  <rect x="12" y="16" width="40" height="36" rx="13" fill="#F3F0E4"/>
+  <rect x="17" y="22" width="30" height="23" rx="8.5" fill="#22302C"/>
+  <ellipse cx="26" cy="32" rx="3.4" ry="4" fill="#8FE0D0"/>
+  <ellipse cx="38" cy="32" rx="3.4" ry="4" fill="#8FE0D0"/>
+  <path d="M27.5 39 q4.5 3.2 9 0" stroke="#8FE0D0" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+</svg>

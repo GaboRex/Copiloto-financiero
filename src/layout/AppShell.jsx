@@ -2,6 +2,7 @@ import React from "react";
 import { Outlet, NavLink, useLocation } from "react-router-dom";
 import { WalletCards } from "lucide-react";
 import { GuestBanner, UserMenu } from "../components/UserMenu.jsx";
+import { SiteFooter } from "../components/SiteFooter.jsx";
 import { Sidebar } from "./Sidebar.jsx";
 import { BottomNav } from "./BottomNav.jsx";
 
@@ -15,7 +16,7 @@ export function AppShell() {
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <header className="md:hidden sticky top-0 z-30 flex items-center justify-between pl-4 pr-2 py-1.5 border-b border-line bg-paper/95 backdrop-blur pt-[max(0.375rem,env(safe-area-inset-top))]">
-          <div className="font-display font-semibold">Copiloto Financiero</div>
+          <div className="flex items-center gap-2 font-display font-semibold"><img src="/favicon.svg" alt="" width="26" height="26" className="rounded-md" />Copiloto Financiero</div>
           {/* Cuentas y la cuenta del usuario (Configuración, Cerrar sesión) no caben en la barra inferior. */}
           <nav aria-label="Accesos secundarios" className="flex items-center gap-1">
             <NavLink to="/cuentas" className={headerLink} aria-label="Cuentas"><WalletCards size={20} aria-hidden="true" /></NavLink>
@@ -28,6 +29,7 @@ export function AppShell() {
           <div key={location.pathname} className="animate-fade-in-up">
             <Outlet />
           </div>
+          <SiteFooter />
         </main>
       </div>
       <BottomNav />

@@ -153,3 +153,12 @@ test("las rutas privadas aceptan invitados y el login ofrece entrar sin cuenta",
   assert.match(login, /continueAsGuest/);
   assert.match(factory, /guest && !user\?\.id/);
 });
+
+test("la política de privacidad es pública (Google la exige para producción)", async () => {
+  const app = await readFile(new URL("../src/App.jsx", import.meta.url), "utf8");
+  const publicRoutes = app.slice(0, app.indexOf('path="/*"'));
+  assert.match(publicRoutes, /path="\/privacidad"/, "la ruta debe declararse antes de las rutas protegidas");
+  const page = await readFile(new URL("../src/pages/Privacidad.jsx", import.meta.url), "utf8");
+  assert.match(page, /Uso Limitado/);
+  assert.match(page, /no se conecta a bancos/);
+});
