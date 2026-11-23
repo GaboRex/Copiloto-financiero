@@ -28,6 +28,14 @@ Este proyecto usa Vite, por eso las variables públicas llevan el prefijo `VITE_
 
 Nunca colocar una `service_role` en una variable `VITE_*` ni en código cliente.
 
+## Modo invitado
+
+En el login, **Probar como invitado** permite usar la app sin cuenta: los datos se guardan solo en el `localStorage` de ese navegador (`copiloto-financiero:estado-financiero-v1`) y la bandera `copiloto-financiero:guest-mode` recuerda el modo entre recargas.
+
+- Un aviso permanente indica que los datos no se sincronizan.
+- **Guardar en la nube** inicia sesión con Google; al volver, la app ofrece importar los datos locales (misma importación idempotente y verificada de la sección "Migración del navegador").
+- **Salir del modo invitado** pregunta si borrar o conservar los datos del navegador.
+
 ## Probar sin Supabase (modo local)
 
 Crear `.env.local` con una sola línea y arrancar:

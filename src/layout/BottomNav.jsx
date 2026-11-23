@@ -20,8 +20,8 @@ export function BottomNav() {
           {({ isActive }) => (
             <>
               {/* Indicador superior: el estado activo no depende solo del color. */}
-              <span aria-hidden="true" className={`absolute top-0 h-0.5 w-8 rounded-full ${isActive ? "bg-teal" : "bg-transparent"}`} />
-              <Icon size={20} aria-hidden="true" strokeWidth={isActive ? 2.25 : 1.75} />
+              <span aria-hidden="true" className={`absolute top-0 h-0.5 rounded-full transition-all duration-300 ${isActive ? "w-8 bg-teal" : "w-0 bg-transparent"}`} />
+              <Icon size={20} aria-hidden="true" strokeWidth={isActive ? 2.25 : 1.75} className={`transition-transform duration-200 ${isActive ? "-translate-y-px scale-110" : ""}`} />
               <span className="truncate w-full text-center">{label}</span>
             </>
           )}

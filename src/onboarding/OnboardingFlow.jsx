@@ -4,10 +4,16 @@ import { Welcome } from "./Welcome.jsx";
 import { ProfileSetup } from "./ProfileSetup.jsx";
 import { FinancialSetup } from "./FinancialSetup.jsx";
 import { OnboardingComplete } from "./OnboardingComplete.jsx";
+import { OnboardingAccountBar } from "../components/UserMenu.jsx";
 
 // Orquesta la primera configuración sin duplicar los modelos de perfil,
 // cuentas o movimientos que usa el resto de la aplicación.
 export function OnboardingFlow() {
+  // En móvil se reserva espacio arriba para que la pastilla "Salir" no tape el progreso.
+  return <><div className="pt-12 sm:pt-0"><OnboardingSteps /></div><OnboardingAccountBar /></>;
+}
+
+function OnboardingSteps() {
   const state = useFinanceState();
   const dispatch = useFinanceDispatch();
   const [step, setStep] = useState(state.profile.name ? "finance" : "welcome");

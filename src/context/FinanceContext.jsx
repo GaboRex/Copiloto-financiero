@@ -34,7 +34,7 @@ export function FinanceProvider({ children }) {
   useEffect(() => {
     let active = true;
     repositoryGenerationRef.current += 1;
-    const repository = createFinanceRepository(auth.user);
+    const repository = createFinanceRepository(auth.user, { guest: auth.guest });
     repositoryRef.current = repository;
     if (!repository) {
       // Sesión cerrada: si los datos del navegador ya estaban importados y
@@ -85,7 +85,7 @@ export function FinanceProvider({ children }) {
       active = false;
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
     };
-  }, [auth.user?.id]);
+  }, [auth.user?.id, auth.guest]);
 
   const dispatch = useCallback((action) => {
     const mutation = async () => {

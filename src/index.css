@@ -19,3 +19,36 @@ body {
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: #D3CCB6; border-radius: 4px; }
+
+/* Keyframes propios del CSS global (Tailwind solo emite los que usan sus clases). */
+@keyframes cf-fade-in-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes cf-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* Entrada escalonada para listas y tarjetas: cada hijo aparece 45 ms después del anterior. */
+.stagger > * { animation: cf-fade-in-up 380ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.stagger > *:nth-child(2) { animation-delay: 45ms; }
+.stagger > *:nth-child(3) { animation-delay: 90ms; }
+.stagger > *:nth-child(4) { animation-delay: 135ms; }
+.stagger > *:nth-child(5) { animation-delay: 180ms; }
+.stagger > *:nth-child(6) { animation-delay: 225ms; }
+.stagger > *:nth-child(7) { animation-delay: 270ms; }
+.stagger > *:nth-child(n + 8) { animation-delay: 300ms; }
+
+/* Esqueleto de carga */
+.skeleton {
+  background: linear-gradient(90deg, #EAE5D4 0%, #F3F0E4 50%, #EAE5D4 100%);
+  background-size: 200% 100%;
+  animation: cf-shimmer 1.6s linear infinite;
+  border-radius: 6px;
+}
+
+/* Accesibilidad: sin animaciones para quien las desactiva en su sistema. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

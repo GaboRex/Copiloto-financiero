@@ -1,9 +1,10 @@
-import React, { useEffect, useId, useRef } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 export function Card({ children, className = "", title, action }) {
   return (
-    <div className={`bg-paper border border-line rounded p-5 ${className}`}>
+    <div className={`bg-paper border border-line rounded-lg p-5 ${className}`}>
       {(title || action) && (
         <div className="flex items-center justify-between mb-3">
           {title && <h2 className="font-display font-semibold text-[1.05rem]">{title}</h2>}
@@ -28,7 +29,7 @@ export function IconButton({ label, tone = "neutral", className = "", children, 
 }
 
 export function Button({ children, variant = "primary", size = "md", className = "", ...props }) {
-  const base = `inline-flex items-center justify-center gap-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${focusRing}`;
+  const base = `inline-flex items-center justify-center gap-2 rounded font-medium transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.98] disabled:active:scale-100 disabled:opacity-50 disabled:cursor-not-allowed ${focusRing}`;
   // Alturas mínimas pensadas para dedo: 40px en sm y 44px en md/lg dentro del móvil.
   const sizes = { sm: "text-xs px-3 py-2 min-h-[40px] sm:min-h-[34px]", md: "text-sm px-4 py-2 min-h-[44px] sm:min-h-[40px]", lg: "text-base px-5 py-2.5 min-h-[48px]" };
   const variants = {
@@ -54,7 +55,7 @@ export function Modal({ open, onClose, title, children }) {
     const focusableSelector = "button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex='-1'])";
     dialog?.querySelector("input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])")?.focus();
     function onKeyDown(event) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") onClose?.();
       if (event.key === "Tab") {
         const items = [...(dialog?.querySelectorAll(focusableSelector) || [])];
         if (!items.length) return;
@@ -68,19 +69,27 @@ export function Modal({ open, onClose, title, children }) {
     return () => { document.removeEventListener("keydown", onKeyDown); previous?.focus?.(); };
   }, [open, onClose]);
   if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 p-0 sm:p-4">
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} className="bg-paper w-full sm:max-w-lg rounded-t-xl sm:rounded border border-line max-h-[90vh] overflow-y-auto pb-[env(safe-area-inset-bottom)]">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-line sticky top-0 bg-paper">
+  // Portal a <body>: un ancestro con transform/backdrop-filter (p. ej. el encabezado
+  // fijo) atraparía al overlay `fixed` y lo recortaría.
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 p-0 sm:p-4 animate-fade-in"
+      // Tocar fuera de la hoja la cierra (salvo que onClose no exista, p. ej. durante una importación).
+      onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.(); }}
+    >
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} className="bg-paper w-full sm:max-w-lg rounded-t-2xl sm:rounded-lg border border-line shadow-card max-h-[90vh] overflow-y-auto pb-[env(safe-area-inset-bottom)] animate-sheet-up sm:animate-pop-in">
+        {/* Asa visual de la hoja inferior en móvil */}
+        <div aria-hidden="true" className="sm:hidden mx-auto mt-2 h-1 w-10 rounded-full bg-line" />
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-line sticky top-0 bg-paper z-10">
           <h2 id={titleId} className="font-display font-semibold text-[1.05rem]">{title}</h2>
-          <IconButton onClick={onClose} label={`Cerrar ${title}`} className="-mr-2">
+          {onClose ? <IconButton onClick={onClose} label={`Cerrar ${title}`} className="-mr-2">
             <X size={18} aria-hidden="true" />
-          </IconButton>
+          </IconButton> : null}
         </div>
         <div className="p-5">{children}</div>
       </div>
     </div>
-  );
+  , document.body);
 }
 
 export function Field({ label, children }) {
@@ -110,11 +119,14 @@ export function Select({ children, className = "", ...props }) {
   );
 }
 
-export function ProgressBar({ value, max = 100, color = "#1F5C56", trackClassName = "" }) {
+export function ProgressBar({ value, max = 100, color = "#1F5C56", trackClassName = "", label }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
+  // Arranca en 0 y se llena al montar: comunica avance sin bloquear la lectura.
+  const [shown, setShown] = useState(0);
+  useEffect(() => { const frame = requestAnimationFrame(() => setShown(pct)); return () => cancelAnimationFrame(frame); }, [pct]);
   return (
-    <div className={`h-2 bg-paper-raised rounded overflow-hidden ${trackClassName}`}>
-      <div className="h-full transition-all" style={{ width: `${pct}%`, background: color }} />
+    <div className={`h-2 bg-paper-raised rounded-full overflow-hidden ${trackClassName}`} role={label ? "progressbar" : undefined} aria-label={label} aria-valuenow={label ? Math.round(pct) : undefined} aria-valuemin={label ? 0 : undefined} aria-valuemax={label ? 100 : undefined}>
+      <div className="h-full rounded-full transition-[width] duration-700 ease-out" style={{ width: `${shown}%`, background: color }} />
     </div>
   );
 }

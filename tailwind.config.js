@@ -24,6 +24,26 @@ export default {
       boxShadow: {
         card: "0 1px 2px rgba(34, 48, 44, 0.06), 0 6px 16px rgba(34, 48, 44, 0.10)",
       },
+      // Usan fill-mode `backwards`: al terminar no queda ningún transform aplicado
+      // (un transform residual atraparía elementos `position: fixed` descendientes).
+      // Sistema de movimiento: duraciones cortas y curvas suaves. Todo se
+      // desactiva con prefers-reduced-motion (ver index.css).
+      keyframes: {
+        "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
+        "fade-in-up": { from: { opacity: "0", transform: "translateY(10px)" }, to: { opacity: "1", transform: "none" } },
+        "pop-in": { from: { opacity: "0", transform: "scale(0.96)" }, to: { opacity: "1", transform: "none" } },
+        "sheet-up": { from: { transform: "translateY(100%)" }, to: { transform: "none" } },
+        "check-in": { "0%": { opacity: "0", transform: "scale(0.6)" }, "60%": { opacity: "1", transform: "scale(1.08)" }, "100%": { transform: "none" } },
+        shimmer: { from: { backgroundPosition: "200% 0" }, to: { backgroundPosition: "-200% 0" } },
+      },
+      animation: {
+        "fade-in": "fade-in 200ms ease-out backwards",
+        "fade-in-up": "fade-in-up 360ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards",
+        "pop-in": "pop-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards",
+        "sheet-up": "sheet-up 300ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards",
+        "check-in": "check-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards",
+        shimmer: "shimmer 1.6s linear infinite",
+      },
       borderRadius: {
         DEFAULT: "6px",
       },

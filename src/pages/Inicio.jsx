@@ -6,6 +6,7 @@ import { Button, Card, ProgressBar } from "../components/ui/primitives.jsx";
 import { FinancialScoreGauge } from "../components/finance/FinancialScoreGauge.jsx";
 import { InsightCard } from "../components/finance/cards.jsx";
 import { SectionGuide } from "../components/SectionGuide.jsx";
+import { useCountUp } from "../hooks/useCountUp.js";
 import { calculateAvailableMoney, calculateFinancialHealth, getEmergencyFundStatus, getSavingsRealized, getUpcomingCommitments, hasFinancialData } from "../services/financial/calculations.js";
 import { getFinancialDataReadiness } from "../services/financial/readiness.js";
 import { getMainInsight } from "../services/financial/insights.js";
@@ -21,7 +22,7 @@ export default function Inicio() {
   const hasAccounts = state.accounts.some((account) => account.type !== "tarjeta_credito");
   const today = new Date().toLocaleDateString("es-BO", { weekday: "long", day: "numeric", month: "long" });
   const showSummary = hasFinancialData(state);
-  return <div className="flex flex-col gap-5 md:gap-6">
+  return <div className="flex flex-col gap-5 md:gap-6 stagger">
     <div><p className="text-ink-soft text-sm first-letter:uppercase">{today}</p><h1 className="font-display text-2xl font-semibold">Hola, {state.profile.name}</h1></div>
     {/* Lo primero que se ve: cuánto puedo gastar y cómo registrar un movimiento. */}
     {hasAccounts ? <AvailableHero state={state} navigate={navigate} /> : null}
@@ -40,14 +41,17 @@ export default function Inicio() {
 function AvailableHero({ state, navigate }) {
   const { totalBalance, committed, available } = calculateAvailableMoney(state);
   const currency = state.profile.currency;
-  return <section aria-labelledby="available-title" className="rounded-lg bg-teal text-paper p-5 md:p-6 shadow-card">
-    <div className="flex items-start justify-between gap-3">
+  const animatedAvailable = useCountUp(available);
+  return <section aria-labelledby="available-title" className="relative overflow-hidden rounded-xl bg-teal text-paper p-5 md:p-6 shadow-card">
+    <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full border border-paper/10" />
+    <div aria-hidden="true" className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full border border-paper/10" />
+    <div className="relative flex items-start justify-between gap-3">
       <h2 id="available-title" className="text-sm text-paper/85">Disponible para gastar</h2>
       <button onClick={() => navigate("/cuentas")} aria-label="Ver y editar cuentas" className="-mt-2 -mr-2 inline-flex items-center gap-0.5 rounded px-2 min-h-[40px] text-sm text-paper/85 hover:text-paper hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-paper">Cuentas<ChevronRight size={16} aria-hidden="true" /></button>
     </div>
-    <p className={`font-display text-4xl md:text-5xl font-semibold tabular-nums mt-1 ${available < 0 ? "text-[#F6C9BE]" : ""}`}>{fmtBs(available, currency)}</p>
-    <p className="text-sm text-paper/85 mt-2 tabular-nums">{fmtBs(totalBalance, currency)} en cuentas · {fmtBs(committed, currency)} comprometido en 30 días</p>
-    <div className="grid grid-cols-2 gap-2 mt-5">
+    <p className={`relative font-display text-4xl md:text-5xl font-semibold tabular-nums mt-1 ${available < 0 ? "text-[#F6C9BE]" : ""}`}>{fmtBs(animatedAvailable, currency)}</p>
+    <p className="relative text-sm text-paper/85 mt-2 tabular-nums">{fmtBs(totalBalance, currency)} en cuentas · {fmtBs(committed, currency)} comprometido en 30 días</p>
+    <div className="relative grid grid-cols-2 gap-2 mt-5">
       <button onClick={() => navigate("/movimientos?nuevo=gasto")} className="min-h-[48px] rounded bg-paper text-ink font-medium inline-flex items-center justify-center gap-2 hover:bg-paper-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-paper focus-visible:ring-offset-2 focus-visible:ring-offset-teal"><Minus size={18} aria-hidden="true" />Gasto</button>
       <button onClick={() => navigate("/movimientos?nuevo=ingreso")} className="min-h-[48px] rounded border border-paper/60 text-paper font-medium inline-flex items-center justify-center gap-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-paper focus-visible:ring-offset-2 focus-visible:ring-offset-teal"><Plus size={18} aria-hidden="true" />Ingreso</button>
     </div>
@@ -69,7 +73,7 @@ function FirstMovementsCard({ progress, navigate }) {
 
 function ProgressItem({ done, children }) { const Icon = done ? Check : Circle; return <span className={`flex items-center gap-2 ${done ? "text-teal" : "font-medium"}`}><Icon size={15} aria-hidden="true" />{children}</span>; }
 
-function HighlightedAccess({ icon: Icon, title, text, onClick }) { return <button onClick={onClick} className="text-left border border-line rounded p-4 bg-paper hover:bg-paper-raised transition-colors flex items-center gap-3 min-h-[64px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal"><span className="w-10 h-10 rounded-full bg-teal/10 flex items-center justify-center shrink-0"><Icon size={18} className="text-teal" aria-hidden="true" /></span><span className="flex-1 min-w-0"><span className="font-display font-semibold block">{title}</span><span className="text-ink-soft text-sm block">{text}</span></span><ChevronRight size={18} className="text-ink-soft shrink-0" aria-hidden="true" /></button>; }
+function HighlightedAccess({ icon: Icon, title, text, onClick }) { return <button onClick={onClick} className="group text-left border border-line rounded-lg p-4 bg-paper transition duration-200 hover:-translate-y-0.5 hover:shadow-card hover:border-line-strong/50 active:translate-y-0 flex items-center gap-3 min-h-[64px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal"><span className="w-10 h-10 rounded-full bg-teal/10 flex items-center justify-center shrink-0"><Icon size={18} className="text-teal" aria-hidden="true" /></span><span className="flex-1 min-w-0"><span className="font-display font-semibold block">{title}</span><span className="text-ink-soft text-sm block">{text}</span></span><ChevronRight size={18} className="text-ink-soft shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></button>; }
 
 function FinancialSummary({ state, navigate, readiness }) {
   const health = calculateFinancialHealth(state);
@@ -104,5 +108,5 @@ function WhatYouCanDo({ state, navigate }) {
     { icon: Bot, title: "Copiloto", text: "Haz preguntas concretas sobre tus finanzas.", sub: "Respuestas basadas en tus datos", to: "/copiloto" },
     { icon: ShoppingBag, title: "¿Puedo comprarlo?", text: "Mide el impacto antes de gastar.", sub: "Liquidez, reserva y compromisos", to: "/puedo-comprarlo" },
   ];
-  return <div><h2 className="font-display font-semibold text-lg mb-3">¿Qué puedes hacer?</h2><div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{items.map((item) => <button key={item.to} onClick={() => navigate(item.to)} className="text-left border border-line rounded p-4 bg-paper hover:bg-paper-raised transition-colors flex flex-col gap-2"><span className="flex items-center gap-2"><item.icon size={16} className="text-teal" aria-hidden="true" /><span className="font-medium text-sm">{item.title}</span></span><span className="text-ink-soft text-xs">{item.text}</span><span className="flex items-center justify-between mt-1"><span className="text-xs text-ink-soft">{item.sub}</span><ArrowRight size={13} aria-hidden="true" /></span></button>)}</div></div>;
+  return <div><h2 className="font-display font-semibold text-lg mb-3">¿Qué puedes hacer?</h2><div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">{items.map((item) => <button key={item.to} onClick={() => navigate(item.to)} className="group text-left border border-line rounded-lg p-4 bg-paper transition duration-200 hover:-translate-y-0.5 hover:shadow-card hover:border-line-strong/50 flex flex-col gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal"><span className="flex items-center gap-2"><item.icon size={16} className="text-teal" aria-hidden="true" /><span className="font-medium text-sm">{item.title}</span></span><span className="text-ink-soft text-xs">{item.text}</span><span className="flex items-center justify-between mt-1"><span className="text-xs text-ink-soft">{item.sub}</span><ArrowRight size={13} aria-hidden="true" className="transition-transform group-hover:translate-x-0.5" /></span></button>)}</div></div>;
 }

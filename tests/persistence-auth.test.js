@@ -131,3 +131,25 @@ test("al cerrar sesión se borran solo los datos locales ya importados", async (
   clearImportedLocalData(storage);
   assert.deepEqual([...values.keys()], ["sb-project-auth-token", "otra-app"]);
 });
+
+test("el modo invitado se recuerda en el navegador y se puede abandonar", async () => {
+  const { readGuestFlag, writeGuestFlag, clearGuestFlag } = await import("../src/auth/guestMode.js");
+  const storage = memoryStorage();
+  assert.equal(readGuestFlag(storage), false);
+  writeGuestFlag(storage);
+  assert.equal(readGuestFlag(storage), true);
+  clearGuestFlag(storage);
+  assert.equal(readGuestFlag(storage), false);
+  const blocked = { getItem() { throw new Error("bloqueado"); }, setItem() { throw new Error("bloqueado"); }, removeItem() { throw new Error("bloqueado"); } };
+  assert.equal(readGuestFlag(blocked), false);
+  assert.doesNotThrow(() => writeGuestFlag(blocked));
+});
+
+test("las rutas privadas aceptan invitados y el login ofrece entrar sin cuenta", async () => {
+  const app = await readFile(new URL("../src/App.jsx", import.meta.url), "utf8");
+  const login = await readFile(new URL("../src/pages/Login.jsx", import.meta.url), "utf8");
+  const factory = await readFile(new URL("../src/repositories/factory.js", import.meta.url), "utf8");
+  assert.match(app, /!auth\.user && !auth\.guest/);
+  assert.match(login, /continueAsGuest/);
+  assert.match(factory, /guest && !user\?\.id/);
+});

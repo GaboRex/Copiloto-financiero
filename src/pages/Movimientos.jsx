@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CalendarClock, Pencil, Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
+import { CalendarClock, Pencil, Plus, ReceiptText, Search, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useFinanceDispatch, useFinanceState } from "../context/FinanceContext.jsx";
 import { TransactionItem } from "../components/finance/cards.jsx";
 import { TransactionForm } from "../components/finance/TransactionForm.jsx";
 import { SectionGuide } from "../components/SectionGuide.jsx";
 import { Button, Card, Field, IconButton, Input, Modal, Select } from "../components/ui/primitives.jsx";
-import { fmtBs } from "../services/financial/format.js";
+import { fmtBs, localDateString } from "../services/financial/format.js";
+import { getTransactionBalanceDelta } from "../services/financial/ledger.js";
 
 export default function Movimientos() {
   const state = useFinanceState();
@@ -55,13 +56,46 @@ export default function Movimientos() {
           <Field label="Ordenar por"><Select value={orden} onChange={(event) => setOrden(event.target.value)}><option value="reciente">Más reciente</option><option value="antiguo">Más antiguo</option><option value="mayor">Mayor monto</option><option value="menor">Menor monto</option></Select></Field>
         </div>
       </Card>
-      <Card>{movimientosFiltrados.length === 0 ? <p className="text-ink-soft text-sm">No hay movimientos que coincidan. Registra uno o cambia los filtros.</p> : movimientosFiltrados.map((transaction) => <TransactionItem key={transaction.id} tx={transaction} categoryName={state.categories.find((category) => category.id === transaction.category)?.name || (transaction.type === "ajuste" ? "Ajuste de saldo" : transaction.category)} accountName={state.accounts.find((account) => account.id === transaction.accountId)?.name || "Cuenta eliminada"} currency={state.profile.currency} onEdit={!transaction.generated ? () => setEditing(transaction) : null} onDelete={!transaction.generated ? () => { if (window.confirm(`¿Eliminar “${transaction.description}”? El saldo de la cuenta se actualizará.`)) dispatch({ type: "DELETE_TRANSACTION", payload: transaction.id }); } : null} />)}</Card>
+      {movimientosFiltrados.length === 0
+        ? <EmptyMovements filtered={state.transactions.length > 0} onClear={() => { setBusqueda(""); setFiltroCategoria("todas"); setFiltroCuenta("todas"); }} onNew={() => abrirNuevo("gasto")} />
+        : <Card className="!py-2">{(orden === "reciente" || orden === "antiguo" ? groupByDay(movimientosFiltrados) : [{ key: "all", items: movimientosFiltrados }]).map((group) => <section key={group.key} aria-label={group.label} className="stagger">
+            {group.label ? <div className="sticky top-[52px] md:top-0 z-10 -mx-5 px-5 py-2 bg-paper/95 backdrop-blur flex items-center justify-between border-b border-line/70 first:mt-0 mt-2"><h2 className="text-xs font-semibold uppercase tracking-wide text-ink-soft first-letter:uppercase">{group.label}</h2><span className={`text-xs tabular-nums ${group.net >= 0 ? "text-teal" : "text-ink-soft"}`}>{group.net >= 0 ? "+" : "−"} {fmtBs(Math.abs(group.net), state.profile.currency)}</span></div> : null}
+            {group.items.map((transaction) => <TransactionItem key={transaction.id} tx={transaction} categoryName={state.categories.find((category) => category.id === transaction.category)?.name || (transaction.type === "ajuste" ? "Ajuste de saldo" : transaction.category)} accountName={state.accounts.find((account) => account.id === transaction.accountId)?.name || "Cuenta eliminada"} currency={state.profile.currency} onEdit={!transaction.generated ? () => setEditing(transaction) : null} onDelete={!transaction.generated ? () => { if (window.confirm(`¿Eliminar “${transaction.description}”? El saldo de la cuenta se actualizará.`)) dispatch({ type: "DELETE_TRANSACTION", payload: transaction.id }); } : null} />)}
+          </section>)}</Card>}
       <Modal open={modalOpen} onClose={cerrarNuevo} title={movementType === "ingreso" ? "Nuevo ingreso" : "Nuevo gasto"}><TransactionForm key={movementType} initialType={movementType} onSuccess={cerrarNuevo} /></Modal>
       <Modal open={Boolean(editing)} onClose={() => setEditing(null)} title={`Editar ${editing?.description || "movimiento"}`}><TransactionForm key={editing?.id} transaction={editing} onSuccess={() => setEditing(null)} /></Modal>
       <Modal open={recurringOpen} onClose={() => setRecurringOpen(false)} title="Ingresos y gastos recurrentes"><RecurringManager /></Modal>
       <SectionGuide section="movements" />
     </div>
   );
+}
+
+// Agrupa por día con etiqueta amigable y saldo neto del día.
+function groupByDay(transactions) {
+  const today = localDateString();
+  const yesterday = localDateString(new Date(Date.now() - 86400000));
+  const groups = [];
+  for (const transaction of transactions) {
+    const key = String(transaction.date).slice(0, 10);
+    let group = groups.at(-1);
+    if (!group || group.key !== key) {
+      const label = key === today ? "Hoy" : key === yesterday ? "Ayer" : new Intl.DateTimeFormat("es-BO", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${key}T12:00:00`));
+      group = { key, label, items: [], net: 0 };
+      groups.push(group);
+    }
+    group.items.push(transaction);
+    group.net += getTransactionBalanceDelta(transaction);
+  }
+  return groups;
+}
+
+function EmptyMovements({ filtered, onClear, onNew }) {
+  return <Card className="text-center py-10">
+    <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-teal/10 text-teal animate-pop-in"><ReceiptText size={22} aria-hidden="true" /></span>
+    <p className="font-display text-lg font-semibold mt-4">{filtered ? "Nada coincide con tu búsqueda" : "Aún no registras movimientos"}</p>
+    <p className="text-sm text-ink-soft mt-1 max-w-xs mx-auto">{filtered ? "Prueba con otra palabra o quita los filtros." : "Registra tu primer gasto o ingreso para ver aquí tu historial."}</p>
+    <div className="mt-5 flex justify-center">{filtered ? <Button variant="secondary" onClick={onClear}>Quitar filtros</Button> : <Button onClick={onNew}><Plus size={16} aria-hidden="true" />Registrar gasto</Button>}</div>
+  </Card>;
 }
 
 function RecurringManager() {

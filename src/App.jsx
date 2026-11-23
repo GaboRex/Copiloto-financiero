@@ -17,6 +17,7 @@ import Login from "./pages/Login.jsx";
 import AuthCallback from "./pages/AuthCallback.jsx";
 import { DataStatus } from "./components/DataStatus.jsx";
 import { LocalMigrationPrompt } from "./components/LocalMigrationPrompt.jsx";
+import { LoadingScreen } from "./components/LoadingScreen.jsx";
 
 export default function App() {
   return <Routes>
@@ -33,8 +34,8 @@ function ProtectedApplication() {
   const location = useLocation();
   const localMode = import.meta.env.VITE_DATA_MODE === "local";
 
-  if (auth.loading || meta.status === "loading") return <main className="min-h-screen grid place-items-center bg-paper"><p role="status">Cargando tu información…</p></main>;
-  if (!localMode && !auth.user) return <Navigate to="/login" replace state={{ returnTo: `${location.pathname}${location.search}` }} />;
+  if (auth.loading || meta.status === "loading") return <LoadingScreen />;
+  if (!localMode && !auth.user && !auth.guest) return <Navigate to="/login" replace state={{ returnTo: `${location.pathname}${location.search}` }} />;
 
   // Usuario nuevo / no configurado: bienvenida -> configuración -> guía.
   // No usa rutas propias a propósito, para no interferir con la navegación

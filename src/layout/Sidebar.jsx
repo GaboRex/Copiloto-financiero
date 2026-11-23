@@ -1,6 +1,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { MAIN_NAV, SECONDARY_NAV } from "./navConfig.js";
+import { SidebarAccount } from "../components/UserMenu.jsx";
 
 function Item({ to, label, icon: Icon, end }) {
   return (
@@ -21,7 +22,7 @@ function Item({ to, label, icon: Icon, end }) {
 
 export function Sidebar() {
   return (
-    <aside className="hidden md:flex md:flex-col w-56 shrink-0 border-r border-line px-3 py-6 gap-6">
+    <aside className="hidden md:flex md:flex-col w-60 shrink-0 border-r border-line px-3 py-6 gap-6 sticky top-0 h-screen">
       <div className="px-3">
         <div className="font-display font-semibold text-lg leading-tight">Copiloto</div>
         <div className="font-display font-semibold text-lg leading-tight text-teal">Financiero</div>
@@ -35,6 +36,7 @@ export function Sidebar() {
         {SECONDARY_NAV.map((item) => (
           <Item key={item.to} {...item} />
         ))}
+        <SidebarAccount />
       </div>
     </aside>
   );

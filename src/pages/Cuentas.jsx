@@ -29,11 +29,11 @@ export default function Cuentas() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between flex-wrap gap-3"><h1 className="font-display text-2xl font-semibold">Cuentas</h1><Button size="sm" onClick={() => setModalOpen(true)}><Plus size={14} /> Agregar cuenta</Button></div>
       {notice ? <AlertBanner level="warning">{notice}</AlertBanner> : null}
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-2 gap-4 stagger">
         <Card><div className="text-ink-soft text-xs">Total en cuentas de activo</div><div className="font-display text-2xl font-semibold text-teal">{fmtBs(getTotalBalance(state), state.profile.currency)}</div></Card>
         <Card><div className="text-ink-soft text-xs">Saldo utilizado en tarjetas</div><div className="font-display text-2xl font-semibold text-brick">{fmtBs(getCreditCardDebt(state), state.profile.currency)}</div></Card>
       </div>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
         {state.accounts.map((account) => <AccountCard key={account.id} account={account} currency={state.profile.currency} onEdit={() => setEditing(account)} onDelete={() => deleteAccount(account)} />)}
         {!state.accounts.length ? <p className="text-ink-soft text-sm">Añade una cuenta para registrar saldos y movimientos.</p> : null}
       </div>

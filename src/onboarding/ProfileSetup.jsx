@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Card, Field, Input, Select, Button } from "../components/ui/primitives.jsx";
+import { OnboardingProgress } from "./OnboardingProgress.jsx";
 
 const EMPLOYMENT_TYPES = [
   { value: "dependiente", label: "Dependiente (sueldo fijo)" },
@@ -73,10 +74,11 @@ export function ProfileForm({ initialValues, submitLabel = "Guardar", onSubmit }
 
 export function ProfileSetup({ initialValues, onBack, onComplete }) {
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-12">
-      <Card className="w-full max-w-md" title="Cuéntanos un poco de ti">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12 animate-fade-in-up">
+      <OnboardingProgress current={0} />
+      <Card className="w-full max-w-md shadow-card" title="Cuéntanos un poco de ti">
         <p className="text-ink-soft text-sm mb-4">
-          Paso 1 de 2. Completa tus datos básicos; los movimientos se registran después desde Inicio o Movimientos.
+          Con esto personalizamos la app. Los movimientos se registran después, desde Inicio o Movimientos.
         </p>
         <ProfileForm initialValues={initialValues} submitLabel="Continuar" onSubmit={onComplete} />
         {onBack ? (

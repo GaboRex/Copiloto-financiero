@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { oauthRedirectUrl, safeReturnPath, supabase, supabaseConfigured } from "../services/supabase/client.js";
+import { clearGuestFlag, readGuestFlag, writeGuestFlag } from "./guestMode.js";
+import { clearImportedLocalData } from "../services/import/localMigration.js";
 
 const AuthContext = createContext(null);
 
@@ -7,6 +9,8 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Modo invitado: sin cuenta, los datos viven solo en el localStorage de este navegador.
+  const [guest, setGuest] = useState(readGuestFlag);
 
   useEffect(() => {
     if (!supabaseConfigured) {
@@ -24,7 +28,13 @@ export function AuthProvider({ children }) {
       if (!active) return;
       if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN" || event === "INITIAL_SESSION") setError("");
       if (event === "SIGNED_OUT") setSession(null);
-      else if (nextSession) setSession(nextSession);
+      else if (nextSession) {
+        setSession(nextSession);
+        // Al iniciar sesión, el invitado pasa a ser usuario con cuenta. Sus datos
+        // locales se ofrecerán para importar (LocalMigrationPrompt).
+        clearGuestFlag();
+        setGuest(false);
+      }
       setLoading(false);
     });
     return () => { active = false; data.subscription.unsubscribe(); };
@@ -46,13 +56,37 @@ export function AuthProvider({ children }) {
 
   const signOut = useCallback(async () => {
     setError("");
-    const result = supabase ? await supabase.auth.signOut() : { error: null };
+    let result = { error: null };
+    if (supabase) {
+      // "global" revoca la sesión en el servidor, pero si esa petición falla
+      // supabase-js conserva la sesión en el navegador y el siguiente refresco
+      // del token la "revive". En ese caso cerramos al menos este dispositivo.
+      result = await supabase.auth.signOut({ scope: "global" }).catch((thrown) => ({ error: thrown }));
+      if (result.error) await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+    }
     setSession(null);
-    if (result.error) setError("La sesión terminó localmente, pero no pudimos confirmar el cierre remoto.");
     return result;
   }, []);
 
-  const value = useMemo(() => ({ session, user: session?.user || null, loading, error, configured: supabaseConfigured, signInWithGoogle, signOut, clearError: () => setError("") }), [session, loading, error, signInWithGoogle, signOut]);
+  const continueAsGuest = useCallback(() => {
+    writeGuestFlag();
+    setGuest(true);
+  }, []);
+
+  // Salir del modo invitado; con clearData se borran los datos de este navegador.
+  const exitGuest = useCallback(({ clearData = false } = {}) => {
+    if (clearData) clearImportedLocalData();
+    clearGuestFlag();
+    setGuest(false);
+  }, []);
+
+  const user = session?.user || null;
+  const value = useMemo(() => ({
+    session, user, loading, error, configured: supabaseConfigured,
+    guest: guest && !user,
+    signInWithGoogle, signOut, continueAsGuest, exitGuest,
+    clearError: () => setError(""),
+  }), [session, user, loading, error, guest, signInWithGoogle, signOut, continueAsGuest, exitGuest]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

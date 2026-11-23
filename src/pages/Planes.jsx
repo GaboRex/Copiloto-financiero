@@ -91,7 +91,7 @@ function Objetivos({ autoOpen }) {
           <Plus size={14} /> Nuevo objetivo
         </Button>
       </div>
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-2 gap-4 stagger">
         {state.goals.map((g) => (
           <GoalCard
             key={g.id}
@@ -307,7 +307,7 @@ function Deudas() {
         </Button>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-2 gap-4 stagger">
         {state.debts.map((d) => (
           <DebtCard
             key={d.id}

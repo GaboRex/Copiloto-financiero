@@ -38,12 +38,12 @@ export default function Copiloto() {
     <div className="flex flex-col gap-4 h-[calc(100vh-9rem)] md:h-[calc(100vh-6rem)]">
       <h1 className="font-display text-2xl font-semibold">Copiloto</h1>
 
-      <Card className="flex-1 flex flex-col overflow-hidden p-0">
+      <Card className="flex-1 flex flex-col overflow-hidden !p-0">
         <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
           {messages.map((m, i) => (
-            <div key={i} className={`flex gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div key={i} className={`flex gap-2 animate-fade-in-up ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               {m.role === "bot" && <Bot size={18} className="text-teal shrink-0 mt-1" />}
-              <div className={`max-w-[80%] text-sm rounded px-3 py-2 ${m.role === "user" ? "bg-ink text-paper" : "bg-paper-raised"}`}>
+              <div className={`max-w-[80%] text-sm leading-relaxed px-3.5 py-2.5 whitespace-pre-line ${m.role === "user" ? "bg-ink text-paper rounded-2xl rounded-br-md" : "bg-paper-raised rounded-2xl rounded-bl-md"}`}>
                 {m.text}
               </div>
               {m.role === "user" && <User size={18} className="text-ink-soft shrink-0 mt-1" />}
