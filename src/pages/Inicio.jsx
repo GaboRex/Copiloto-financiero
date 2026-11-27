@@ -8,6 +8,9 @@ import { InsightCard } from "../components/finance/cards.jsx";
 import { SectionGuide } from "../components/SectionGuide.jsx";
 import { useCountUp } from "../hooks/useCountUp.js";
 import { BudgetsOverview } from "../components/budgets/BudgetsPanel.jsx";
+import { RemindersStack } from "../components/reminders/RemindersStack.jsx";
+import { InstallAppCard } from "../components/pwa/InstallApp.jsx";
+import { NotificationPrompt } from "../components/pwa/NotificationsPanel.jsx";
 import { calculateAvailableMoney, calculateFinancialHealth, getEmergencyFundStatus, getSavingsRealized, getUpcomingCommitments, hasFinancialData } from "../services/financial/calculations.js";
 import { getFinancialDataReadiness } from "../services/financial/readiness.js";
 import { getMainInsight } from "../services/financial/insights.js";
@@ -26,7 +29,10 @@ export default function Inicio() {
   return <div className="flex flex-col gap-5 md:gap-6 stagger">
     <div><p className="text-ink-soft text-sm first-letter:uppercase">{today}</p><h1 className="font-display text-2xl font-semibold">Hola, {state.profile.name}</h1></div>
     {/* Lo primero que se ve: cuánto puedo gastar y cómo registrar un movimiento. */}
+    <RemindersStack />
     {hasAccounts ? <AvailableHero state={state} navigate={navigate} /> : null}
+    <NotificationPrompt />
+    <InstallAppCard />
     {!hasAccounts ? <Card><p className="font-display text-lg font-semibold">Añade dónde guardas tu dinero</p><p className="text-ink-soft text-sm mt-2">Necesitas al menos una cuenta de activo para calcular saldos y proyecciones.</p><Button className="mt-4" onClick={() => navigate("/cuentas")}>Añadir cuenta</Button></Card> : null}
     {hasAccounts && !readiness.firstMovements.complete ? <FirstMovementsCard progress={readiness.firstMovements} navigate={navigate} /> : null}
     <div className="grid sm:grid-cols-2 gap-3">

@@ -5,6 +5,9 @@ import App from "./App.jsx";
 import { FinanceProvider } from "./context/FinanceContext.jsx";
 import { AuthProvider } from "./auth/AuthContext.jsx";
 import "./index.css";
+import { registerServiceWorker } from "./pwa/pwa.js";
+
+registerServiceWorker();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

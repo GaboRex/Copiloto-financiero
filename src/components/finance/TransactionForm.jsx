@@ -3,13 +3,25 @@ import { useFinanceDispatch, useFinanceState } from "../../context/FinanceContex
 import { addMonths, localDateString, parseDate } from "../../services/financial/format.js";
 import { Button, Field, Input, Select } from "../ui/primitives.jsx";
 
-function buildInitialForm(state, type, transaction, budgetId = null, budgetItemId = null) {
+function buildInitialForm(state, type, transaction, budgetId = null, budgetItemId = null, prefill = null) {
   if (transaction) return {
     description: transaction.description || "", amount: String(transaction.amount || ""), date: localDateString(transaction.date),
     category: transaction.category || "", accountId: transaction.accountId || "", paymentMethod: transaction.paymentMethod || "", type: transaction.type,
     budgetId: transaction.budgetId || null, budgetItemId: transaction.budgetItemId || null,
   };
-  return { description: "", amount: "", date: localDateString(), category: state.categories.find((category) => category.type === type && !category.system)?.id || "", accountId: state.accounts[0]?.id || "", paymentMethod: state.paymentMethods[0]?.id || "", type, budgetId, budgetItemId };
+  const base = { description: "", amount: "", date: localDateString(), category: state.categories.find((category) => category.type === type && !category.system)?.id || "", accountId: state.accounts[0]?.id || "", paymentMethod: state.paymentMethods[0]?.id || "", type, budgetId, budgetItemId, recurringId: null };
+  if (!prefill) return base;
+  // Valores sugeridos (p. ej. desde un recordatorio): solo se usan si son válidos.
+  const validAccount = state.accounts.some((account) => account.id === prefill.accountId);
+  const validCategory = state.categories.some((category) => category.id === prefill.category && category.type === type);
+  return {
+    ...base,
+    description: prefill.description ?? base.description,
+    amount: prefill.amount != null ? String(prefill.amount) : base.amount,
+    category: validCategory ? prefill.category : base.category,
+    accountId: validAccount ? prefill.accountId : base.accountId,
+    recurringId: prefill.recurringId || null,
+  };
 }
 
 // Presupuestos elegibles: los no cerrados, más el que ya tenga el movimiento.
@@ -25,10 +37,10 @@ function BudgetSelect({ budgets, value, onChange }) {
   </Field>;
 }
 
-export function TransactionForm({ initialType = "gasto", lockType = false, transaction = null, onSuccess, submitLabel, initialBudgetId = null, initialBudgetItemId = null }) {
+export function TransactionForm({ initialType = "gasto", lockType = false, transaction = null, onSuccess, submitLabel, initialBudgetId = null, initialBudgetItemId = null, prefill = null }) {
   const state = useFinanceState();
   const dispatch = useFinanceDispatch();
-  const [form, setForm] = useState(() => buildInitialForm(state, initialType, transaction, initialBudgetId, initialBudgetItemId));
+  const [form, setForm] = useState(() => buildInitialForm(state, initialType, transaction, initialBudgetId, initialBudgetItemId, prefill));
   const [recurring, setRecurring] = useState(false);
   const editing = Boolean(transaction);
   const availableCategories = state.categories.filter((category) => category.type === form.type && !category.system);
@@ -61,7 +73,7 @@ export function TransactionForm({ initialType = "gasto", lockType = false, trans
           },
         });
       } else {
-        dispatch({ type: "ADD_TRANSACTION", payload: { ...form, description: form.description.trim(), amount: movementAmount, recurringId: null } });
+        dispatch({ type: "ADD_TRANSACTION", payload: { ...form, description: form.description.trim(), amount: movementAmount, recurringId: form.recurringId || null } });
       }
       setForm(buildInitialForm(state, form.type, null, initialBudgetId, initialBudgetItemId));
     }
@@ -84,7 +96,7 @@ export function TransactionForm({ initialType = "gasto", lockType = false, trans
       </div>
       <Field label="Método de pago"><Select value={form.paymentMethod} onChange={(event) => setForm((current) => ({ ...current, paymentMethod: event.target.value }))}>{state.paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.name}</option>)}</Select></Field>
       {form.type === "gasto" && selectableBudgets.length ? <BudgetSelect budgets={selectableBudgets} value={budgetValue} onChange={changeBudget} /> : null}
-      {!editing ? <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={recurring} onChange={(event) => setRecurring(event.target.checked)} /> Repetir mensualmente y usar en proyecciones</label> : null}
+      {!editing && !form.recurringId ? <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={recurring} onChange={(event) => setRecurring(event.target.checked)} /> Repetir mensualmente y usar en proyecciones</label> : null}
       <Button type="submit" className="mt-1">{submitLabel || (editing ? "Guardar cambios" : "Guardar")}</Button>
     </form>
   );

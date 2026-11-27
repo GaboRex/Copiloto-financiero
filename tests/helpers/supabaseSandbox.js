@@ -8,13 +8,14 @@ import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 const AUTH_STUB = `
 create role anon nologin;
 create role authenticated nologin;
+create role service_role nologin bypassrls;
 create schema auth;
 create table auth.users (id uuid primary key, email text);
 create function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claims', true)::jsonb->>'sub', '')::uuid
 $$;
 grant usage on schema auth to anon, authenticated;
-grant usage on schema public to anon, authenticated;
+grant usage on schema public to anon, authenticated, service_role;
 `;
 
 export async function createSandbox() {
@@ -46,4 +47,12 @@ export async function rpc(db, userId, name, args = {}) {
   const values = keys.map((key) => (args[key] !== null && typeof args[key] === "object" ? JSON.stringify(args[key]) : args[key]));
   const { rows } = await asUser(db, userId, (tx) => tx.query(`select public.${name}(${params}) as result`, values));
   return rows[0].result;
+}
+
+// Ejecuta una consulta como service_role (lo que usa la Edge Function).
+export async function asService(db, fn) {
+  return db.transaction(async (tx) => {
+    await tx.exec("set local role service_role");
+    return fn(tx);
+  });
 }

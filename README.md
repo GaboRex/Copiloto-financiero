@@ -58,6 +58,7 @@ Los datos se guardan solo en ese navegador. Sirve para trabajar la UI sin creden
    1. `supabase/migrations/202609150001_finance_auth_schema.sql`
    2. `supabase/migrations/202611200001_incremental_sync.sql`
    3. `supabase/migrations/202611270001_budgets.sql` (presupuestos por proyecto o evento)
+   4. `supabase/migrations/202611280001_push_notifications.sql` (notificaciones push)
 
    Alternativa con CLI (no necesita Docker): `npx supabase login`, `npx supabase link --project-ref <ref>` y `npx supabase db push`.
 3. En **Project Settings > API** copiar la *Project URL* y la clave *anon public*.
@@ -90,6 +91,27 @@ npm run dev
 ```
 
 `npm test` incluye las pruebas SQL en Postgres embebido (no requieren Docker ni credenciales).
+
+## App instalable (PWA) y recordatorios
+
+- `public/sw.js` es el service worker: cachea la cáscara de la app y `/assets`, nunca respuestas de Supabase, y recibe notificaciones push. Solo se registra en producción (en desarrollo se activa con `VITE_ENABLE_SW=true`).
+- **Instalar app:** tarjeta en Inicio y opción en Configuración. En Android/PC usa el aviso nativo; en iPhone muestra los pasos de Safari.
+- **Recordatorios dentro de la app** (`src/services/financial/reminders.js`): día de cobro de ingresos recurrentes (con registro de un toque), gastos fijos que vencen hoy o mañana, partidas de presupuesto al 80 % o excedidas, 5 días sin movimientos y cierre/inicio de mes. Se descartan por dispositivo.
+
+### Notificaciones push (con la app cerrada)
+
+El permiso del navegador se pide solo cuando la persona toca **Activar avisos** (tarjeta en Inicio o Configuración). Si lo rechaza, no se vuelve a preguntar automáticamente.
+
+Configuración única:
+
+1. Ejecutar `supabase/migrations/202611280001_push_notifications.sql` en el SQL Editor.
+2. Claves VAPID: ya generadas en `.env.push-secrets` (archivo local, excluido de git). La pública también está en `.env` como `VITE_VAPID_PUBLIC_KEY`.
+3. **Vercel:** añadir `VITE_VAPID_PUBLIC_KEY` (Production) y redesplegar.
+4. **Supabase → Edge Functions → Deploy a new function → Via Editor:** nombre `send-reminders`, pegar `supabase/functions/send-reminders/index.ts` y desactivar **Verify JWT** (la función se protege con `CRON_SECRET`). Con CLI: `npx supabase functions deploy send-reminders --no-verify-jwt`.
+5. **Edge Functions → Secrets:** `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` y `CRON_SECRET` (valores de `.env.push-secrets`).
+6. **Integrations → Cron → Create job:** tipo *Supabase Edge Function*, función `send-reminders`, método POST, programación `0 13 * * *` (09:00 en Bolivia) y cabecera `x-cron-secret` con el valor de `CRON_SECRET`.
+
+La función SQL `claim_due_push_reminders()` decide qué enviar (máximo 2 avisos por persona y día, sin repetir gracias a `notification_log`) y solo la puede ejecutar `service_role`. En iPhone los avisos requieren iOS 16.4+ y la app instalada; en modo invitado solo hay recordatorios dentro de la app.
 
 ## Migración del navegador
 

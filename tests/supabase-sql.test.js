@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { createSandbox, addUser, rpc, asUser } from "./helpers/supabaseSandbox.js";
+import { createSandbox, addUser, rpc, asUser, asService } from "./helpers/supabaseSandbox.js";
 
 // Una sola base para todo el archivo; cada test usa usuarios nuevos, así que el
 // aislamiento entre tests lo da el propio RLS/filtrado por user_id.
@@ -259,4 +259,73 @@ test("presupuestos: partidas, gastos enlazados, edición y aislamiento entre usu
   ({ state } = await rpc(db, A, "get_finance_state"));
   assert.deepEqual(state.budgets, []);
   assert.equal(state.transactions.find((transaction) => transaction.id === "t-bus").budgetId, null);
+});
+
+
+async function claim(db, when) {
+  const { rows } = await asService(db, (tx) => tx.query("select * from public.claim_due_push_reminders($1::timestamptz)", [when]));
+  return rows;
+}
+
+test("notificaciones: suscripción por dispositivo, recordatorios del día sin repetir y preferencias", async () => {
+  const db = await freshDb();
+  await seed(db);
+  const endpoint = `https://push.example.test/${A}`;
+  // Ingreso recurrente el día 5 y gasto fijo el 12.
+  await rpc(db, A, "apply_finance_changes", { p_changes: { upsert: {
+    recurringIncomes: [{ id: "r-sueldo", name: "Sueldo", amount: 4000, dayOfMonth: 5, category: "salario", active: true }],
+    recurringExpenses: [{ id: "r-alquiler", name: "Alquiler", amount: 1200, dayOfMonth: 12, category: "vivienda", active: true }],
+  } }, p_expected_revision: 1, p_operation_id: "recurrentes" });
+
+  // Sin dispositivo suscrito no se envía nada.
+  assert.equal((await claim(db, "2026-12-05T13:00:00Z")).filter((row) => row.user_id === A).length, 0);
+
+  await rejects(rpc(db, A, "save_push_subscription", { p_endpoint: "http://inseguro", p_p256dh: "k", p_auth: "a" }), "22023");
+  const settings = await rpc(db, A, "save_push_subscription", { p_endpoint: endpoint, p_p256dh: "clave", p_auth: "secreto", p_user_agent: "test", p_timezone: "America/La_Paz" });
+  assert.equal(settings.devices, 1);
+  assert.equal(settings.payday, true);
+
+  // La app (rol authenticated) no puede ejecutar la selección diaria.
+  await rejects(asUser(db, A, (tx) => tx.query("select * from public.claim_due_push_reminders()")), "42501");
+
+  // 5 de diciembre, 9:00 en La Paz: día de cobro.
+  const payday = (await claim(db, "2026-12-05T13:00:00Z")).filter((row) => row.user_id === A);
+  assert.deepEqual(payday.map((row) => [row.key, row.title, row.endpoint]), [["payday:r-sueldo:2026-12", "Hoy es día de cobro", endpoint]]);
+  assert.match(payday[0].body, /Sueldo \(Bs 4\.000,00\)/);
+  // Si el cron corre dos veces el mismo día, no se repite.
+  assert.equal((await claim(db, "2026-12-05T18:00:00Z")).filter((row) => row.user_id === A).length, 0);
+
+  // 11 de diciembre: mañana vence el alquiler.
+  const due = (await claim(db, "2026-12-11T13:00:00Z")).filter((row) => row.user_id === A);
+  assert.deepEqual(due.map((row) => row.key), ["due:r-alquiler:2026-12"]);
+
+  // Con el sueldo de enero ya registrado no hay aviso de cobro en enero.
+  await rpc(db, A, "apply_finance_changes", { p_changes: { upsert: { transactions: [{ id: "t-ene", type: "ingreso", amount: 4000, accountId: "cash", date: "2027-01-03", category: "salario", recurringId: "r-sueldo" }] } }, p_expected_revision: 2, p_operation_id: "sueldo-ene" });
+  assert.ok(!(await claim(db, "2027-01-05T13:00:00Z")).some((row) => row.user_id === A && row.key.startsWith("payday")));
+
+  // Preferencias: sin recordatorios de cobro no llega el de febrero.
+  await rpc(db, A, "save_notification_settings", { p_settings: { payday: false, due: true, budgets: true, inactivity: true, month: true } });
+  assert.ok(!(await claim(db, "2027-02-05T13:00:00Z")).some((row) => row.user_id === A && row.key.startsWith("payday")));
+
+  // Si otra cuenta inicia sesión en el mismo navegador, el dispositivo pasa a esa cuenta.
+  await rpc(db, B, "save_push_subscription", { p_endpoint: endpoint, p_p256dh: "clave", p_auth: "secreto" });
+  assert.equal((await rpc(db, A, "get_notification_settings")).devices, 0);
+  assert.equal((await rpc(db, B, "get_notification_settings")).devices, 1);
+});
+
+test("notificaciones: avisos de presupuesto y como máximo dos por día", async () => {
+  const db = await freshDb();
+  await seed(db);
+  await rpc(db, A, "save_push_subscription", { p_endpoint: `https://push.example.test/b-${A}`, p_p256dh: "k", p_auth: "a" });
+  const budget = { id: "b-viaje", name: "Viaje", startDate: "2026-12-10", endDate: "2026-12-20", status: "active",
+    items: [{ id: "i-hotel", name: "Hotel", planned: 100 }, { id: "i-comida", name: "Comida", planned: 100 }, { id: "i-taxi", name: "Taxi", planned: 100 }] };
+  const spend = (id, item, amount) => ({ id, type: "gasto", amount, accountId: "cash", date: "2026-12-11", budgetId: "b-viaje", budgetItemId: item });
+  await rpc(db, A, "apply_finance_changes", { p_changes: { upsert: { budgets: [budget], transactions: [spend("x1", "i-hotel", 120), spend("x2", "i-comida", 85), spend("x3", "i-taxi", 90)] } }, p_expected_revision: 1, p_operation_id: "viaje" });
+
+  const first = (await claim(db, "2026-12-12T13:00:00Z")).filter((row) => row.user_id === A);
+  assert.deepEqual(first.map((row) => row.key), ["budget-over:i-hotel", "budget-warning:i-comida"]);
+  assert.equal(first[0].title, "Te pasaste en Hotel");
+  assert.equal(first[0].url, "/planes?tab=presupuestos");
+  // Al día siguiente sale el que quedó pendiente.
+  assert.deepEqual((await claim(db, "2026-12-13T13:00:00Z")).filter((row) => row.user_id === A).map((row) => row.key), ["budget-warning:i-taxi"]);
 });

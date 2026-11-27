@@ -11,6 +11,7 @@ import { fmtBs } from "../services/financial/format.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { createFinanceRepository } from "../repositories/factory.js";
 import { useSaveToCloud, useSessionExit } from "../components/UserMenu.jsx";
+import { AppAndNotificationsCard } from "../components/pwa/NotificationsPanel.jsx";
 
 const EMPLOYMENT_LABELS = {
   dependiente: "Dependiente (sueldo fijo)",
@@ -128,6 +129,7 @@ export default function Configuracion() {
         </div>
       </Card>
 
+      <AppAndNotificationsCard />
       {auth.user ? <Card title="Sesión"><p className="text-sm text-ink-soft mb-3">Sesión vinculada con {auth.user.email || "tu cuenta de Google"}.</p><Button variant="secondary" onClick={exit} disabled={busy}>{busy ? "Cerrando sesión…" : label}</Button><p className="mt-3 text-xs text-ink-soft">La eliminación completa de la cuenta requiere definir primero la política legal de retención. No se ejecuta desde esta pantalla.</p></Card> : null}
       {auth.guest ? <Card title="Modo invitado"><p className="text-sm text-ink-soft mb-3">Tus datos se guardan solo en este navegador: no se sincronizan y se pierden si borras los datos del sitio. Pásalos a una cuenta para usarlos en otros dispositivos.</p><div className="flex flex-wrap gap-2">{cloud.available ? <Button onClick={cloud.save} disabled={cloud.working}>{cloud.working ? "Abriendo Google…" : "Guardar en la nube con Google"}</Button> : null}<Button variant="secondary" onClick={exit}>{label}</Button></div></Card> : null}
       {dialog}
