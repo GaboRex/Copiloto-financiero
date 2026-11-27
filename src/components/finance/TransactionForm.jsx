@@ -3,21 +3,41 @@ import { useFinanceDispatch, useFinanceState } from "../../context/FinanceContex
 import { addMonths, localDateString, parseDate } from "../../services/financial/format.js";
 import { Button, Field, Input, Select } from "../ui/primitives.jsx";
 
-function buildInitialForm(state, type, transaction) {
+function buildInitialForm(state, type, transaction, budgetId = null, budgetItemId = null) {
   if (transaction) return {
     description: transaction.description || "", amount: String(transaction.amount || ""), date: localDateString(transaction.date),
     category: transaction.category || "", accountId: transaction.accountId || "", paymentMethod: transaction.paymentMethod || "", type: transaction.type,
+    budgetId: transaction.budgetId || null, budgetItemId: transaction.budgetItemId || null,
   };
-  return { description: "", amount: "", date: localDateString(), category: state.categories.find((category) => category.type === type && !category.system)?.id || "", accountId: state.accounts[0]?.id || "", paymentMethod: state.paymentMethods[0]?.id || "", type };
+  return { description: "", amount: "", date: localDateString(), category: state.categories.find((category) => category.type === type && !category.system)?.id || "", accountId: state.accounts[0]?.id || "", paymentMethod: state.paymentMethods[0]?.id || "", type, budgetId, budgetItemId };
 }
 
-export function TransactionForm({ initialType = "gasto", lockType = false, transaction = null, onSuccess, submitLabel }) {
+// Presupuestos elegibles: los no cerrados, más el que ya tenga el movimiento.
+function BudgetSelect({ budgets, value, onChange }) {
+  return <Field label="Presupuesto (opcional)">
+    <Select value={value} onChange={(event) => onChange(event.target.value)}>
+      <option value="">Ninguno</option>
+      {budgets.map((budget) => <optgroup key={budget.id} label={budget.name}>
+        {budget.items.map((item) => <option key={item.id} value={`${budget.id}::${item.id}`}>{item.name}</option>)}
+        <option value={`${budget.id}::`}>Sin partida</option>
+      </optgroup>)}
+    </Select>
+  </Field>;
+}
+
+export function TransactionForm({ initialType = "gasto", lockType = false, transaction = null, onSuccess, submitLabel, initialBudgetId = null, initialBudgetItemId = null }) {
   const state = useFinanceState();
   const dispatch = useFinanceDispatch();
-  const [form, setForm] = useState(() => buildInitialForm(state, initialType, transaction));
+  const [form, setForm] = useState(() => buildInitialForm(state, initialType, transaction, initialBudgetId, initialBudgetItemId));
   const [recurring, setRecurring] = useState(false);
   const editing = Boolean(transaction);
   const availableCategories = state.categories.filter((category) => category.type === form.type && !category.system);
+  const selectableBudgets = (state.budgets || []).filter((budget) => budget.status !== "closed" || budget.id === form.budgetId);
+  const budgetValue = form.budgetId ? `${form.budgetId}::${form.budgetItemId || ""}` : "";
+  function changeBudget(value) {
+    const [budgetId, budgetItemId] = value ? value.split("::") : [null, null];
+    setForm((current) => ({ ...current, budgetId: budgetId || null, budgetItemId: budgetItemId || null }));
+  }
 
   function changeType(type) {
     setForm((current) => ({ ...current, type, category: state.categories.find((category) => category.type === type && !category.system)?.id || "" }));
@@ -43,7 +63,7 @@ export function TransactionForm({ initialType = "gasto", lockType = false, trans
       } else {
         dispatch({ type: "ADD_TRANSACTION", payload: { ...form, description: form.description.trim(), amount: movementAmount, recurringId: null } });
       }
-      setForm(buildInitialForm(state, form.type));
+      setForm(buildInitialForm(state, form.type, null, initialBudgetId, initialBudgetItemId));
     }
     onSuccess?.(form.type);
   }
@@ -63,6 +83,7 @@ export function TransactionForm({ initialType = "gasto", lockType = false, trans
         <Field label="Cuenta"><Select value={form.accountId} onChange={(event) => setForm((current) => ({ ...current, accountId: event.target.value }))}>{state.accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</Select></Field>
       </div>
       <Field label="Método de pago"><Select value={form.paymentMethod} onChange={(event) => setForm((current) => ({ ...current, paymentMethod: event.target.value }))}>{state.paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.name}</option>)}</Select></Field>
+      {form.type === "gasto" && selectableBudgets.length ? <BudgetSelect budgets={selectableBudgets} value={budgetValue} onChange={changeBudget} /> : null}
       {!editing ? <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={recurring} onChange={(event) => setRecurring(event.target.checked)} /> Repetir mensualmente y usar en proyecciones</label> : null}
       <Button type="submit" className="mt-1">{submitLabel || (editing ? "Guardar cambios" : "Guardar")}</Button>
     </form>

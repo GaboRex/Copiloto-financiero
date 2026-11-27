@@ -3,6 +3,7 @@
 import { buildEmptyState, buildDemoState } from "../data/mockData.js";
 import { buildAccountCreation, buildTransfer, getTransactionBalanceDelta } from "../services/financial/ledger.js";
 import { localDateString } from "../services/financial/format.js";
+import { sanitizeBudget, sanitizeBudgetLink } from "../services/financial/budgets.js";
 
 function uid(prefix) {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
@@ -29,6 +30,7 @@ export function financeReducer(state, action) {
         recurringExpenses: state.recurringExpenses,
         recurringIncomes: state.recurringIncomes,
         savingsContributions: state.savingsContributions,
+        budgets: state.budgets,
         emergencyFund: state.emergencyFund,
         financialSettings: state.financialSettings,
         sectionGuidesSeen: state.sectionGuidesSeen,
@@ -113,6 +115,7 @@ export function financeReducer(state, action) {
         recurringExpenses: [],
         recurringIncomes: [],
         savingsContributions: [],
+        budgets: [],
         emergencyFund: { current: 0, monthsTarget: 3, configured: false },
         financialSettings: buildEmptyState().financialSettings,
         demoBackup: null,
@@ -122,7 +125,7 @@ export function financeReducer(state, action) {
       const amount = money(action.payload.amount);
       if (!Number.isFinite(amount) || amount <= 0) return state;
       if (!(state.accounts || []).some((account) => account.id === action.payload.accountId)) return state;
-      const tx = { id: uid("tx"), origin: "user", generated: false, ...action.payload, amount, linkedAccountId: action.payload.accountId };
+      const tx = sanitizeBudgetLink({ id: uid("tx"), origin: "user", generated: false, ...action.payload, amount, linkedAccountId: action.payload.accountId }, state.budgets);
       const accounts = (state.accounts || []).map((a) => {
         if (a.id !== tx.accountId) return a;
         return { ...a, balance: money((Number(a.balance) || 0) + getTransactionBalanceDelta(tx)) };
@@ -155,6 +158,7 @@ export function financeReducer(state, action) {
       // En ingresos y gastos el efecto en el saldo se deriva del tipo y el monto;
       // un balanceDelta heredado dejaría el saldo desactualizado tras editar el monto.
       if (next.type === "ingreso" || next.type === "gasto") delete next.balanceDelta;
+      Object.assign(next, sanitizeBudgetLink(next, state.budgets));
       if (!(next.amount > 0) || !(state.accounts || []).some((account) => account.id === next.accountId)) return state;
       let accounts = state.accounts;
       accounts = accounts.map((a) => {
@@ -253,6 +257,38 @@ export function financeReducer(state, action) {
       const collection = action.payload.kind === "ingreso" ? "recurringIncomes" : "recurringExpenses";
       return { ...state, [collection]: (state[collection] || []).filter((item) => item.id !== action.payload.id) };
     }
+
+    // ---- Presupuestos por proyecto o evento ----
+    case "ADD_BUDGET": {
+      const budget = sanitizeBudget(action.payload, uid);
+      if (!budget.name || (state.budgets || []).some((item) => item.id === budget.id)) return state;
+      return { ...state, budgets: [...(state.budgets || []), budget] };
+    }
+
+    case "UPDATE_BUDGET": {
+      const previous = (state.budgets || []).find((item) => item.id === action.payload.id);
+      if (!previous) return state;
+      const budget = sanitizeBudget({ ...previous, ...action.payload, createdAt: previous.createdAt }, uid);
+      if (!budget.name) return state;
+      // Los gastos de partidas eliminadas quedan en el presupuesto, sin partida.
+      const keptItems = new Set(budget.items.map((item) => item.id));
+      return {
+        ...state,
+        budgets: state.budgets.map((item) => (item.id === budget.id ? budget : item)),
+        transactions: state.transactions.map((transaction) => (transaction.budgetId === budget.id && transaction.budgetItemId && !keptItems.has(transaction.budgetItemId)
+          ? { ...transaction, budgetItemId: null }
+          : transaction)),
+      };
+    }
+
+    case "DELETE_BUDGET":
+      if (!(state.budgets || []).some((item) => item.id === action.payload)) return state;
+      return {
+        ...state,
+        budgets: state.budgets.filter((item) => item.id !== action.payload),
+        // Los gastos no se borran: solo dejan de pertenecer al presupuesto.
+        transactions: state.transactions.map((transaction) => (transaction.budgetId === action.payload ? { ...transaction, budgetId: null, budgetItemId: null } : transaction)),
+      };
 
     case "ADD_GOAL":
       return { ...state, goals: [...state.goals, { id: uid("goal"), current: 0, ...action.payload }] };

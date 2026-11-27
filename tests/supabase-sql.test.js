@@ -223,3 +223,40 @@ test("dos dispositivos: el reducer real guarda diffs y un conflicto se resuelve 
   laptopState = await act(laptop, laptopState, { type: "UPDATE_TRANSACTION", payload: { id: lunch.id, amount: 30 } });
   assert.equal(laptopState.accounts[0].balance, 115);
 });
+
+test("presupuestos: partidas, gastos enlazados, edición y aislamiento entre usuarios", async () => {
+  const db = await freshDb();
+  await seed(db);
+  const trip = { id: "b-trip", name: "Viaje a Cochabamba", startDate: "2026-12-10", endDate: "2026-12-14", status: "active",
+    items: [{ id: "i-pasajes", name: "Pasajes", planned: 400 }, { id: "i-hotel", name: "Hotel", planned: 900 }, { id: "i-comida", name: "Comida", planned: 500 }] };
+  const bus = { id: "t-bus", type: "gasto", amount: 380, accountId: "cash", date: "2026-12-01", description: "Bus", category: "transporte", budgetId: "b-trip", budgetItemId: "i-pasajes" };
+  await rpc(db, A, "apply_finance_changes", { p_changes: { upsert: { budgets: [trip], transactions: [bus] } }, p_expected_revision: 1, p_operation_id: "budget-create" });
+
+  let { state } = await rpc(db, A, "get_finance_state");
+  assert.equal(state.budgets.length, 1);
+  assert.deepEqual(state.budgets[0].items.map((item) => [item.name, Number(item.planned)]), [["Pasajes", 400], ["Hotel", 900], ["Comida", 500]]);
+  const linked = state.transactions.find((transaction) => transaction.id === "t-bus");
+  assert.equal(linked.budgetId, "b-trip");
+  assert.equal(linked.budgetItemId, "i-pasajes");
+
+  // Quitar una partida y reordenar: la quitada desaparece, el orden se respeta.
+  const edited = { ...trip, items: [{ id: "i-comida", name: "Comida", planned: 650 }, { id: "i-pasajes", name: "Pasajes", planned: 400 }] };
+  await rpc(db, A, "apply_finance_changes", { p_changes: { upsert: { budgets: [edited] } }, p_expected_revision: 2, p_operation_id: "budget-edit" });
+  ({ state } = await rpc(db, A, "get_finance_state"));
+  assert.deepEqual(state.budgets[0].items.map((item) => item.id), ["i-comida", "i-pasajes"]);
+
+  // Otra persona no puede enlazar su gasto a un presupuesto ajeno.
+  await rpc(db, B, "apply_finance_changes", { p_changes: { upsert: { accounts: [{ id: "b-cash", name: "Caja B", type: "efectivo" }] } }, p_expected_revision: 0, p_operation_id: "b-acc" });
+  await rejects(rpc(db, B, "apply_finance_changes", {
+    p_changes: { upsert: { transactions: [{ id: "t-steal", type: "gasto", amount: 1, accountId: "b-cash", date: "2026-12-01", budgetId: "b-trip" }] } },
+    p_expected_revision: 1, p_operation_id: "b-cross" }), "23503");
+  const others = await rpc(db, B, "get_finance_state");
+  assert.deepEqual(others.state.budgets, []);
+  await rejects(asUser(db, A, (tx) => tx.query("insert into public.budgets(user_id,id,name,currency) values ($1,'x','X','BOB')", [A])), "42501");
+
+  // Eliminar el presupuesto (el cliente desenlaza antes sus gastos).
+  await rpc(db, A, "apply_finance_changes", { p_changes: { upsert: { transactions: [{ ...bus, budgetId: null, budgetItemId: null }] }, remove: { budgets: ["b-trip"] } }, p_expected_revision: 3, p_operation_id: "budget-remove" });
+  ({ state } = await rpc(db, A, "get_finance_state"));
+  assert.deepEqual(state.budgets, []);
+  assert.equal(state.transactions.find((transaction) => transaction.id === "t-bus").budgetId, null);
+});

@@ -146,6 +146,7 @@ export function buildEmptyState() {
     recurringExpenses: [],
     recurringIncomes: [],
     savingsContributions: [],
+    budgets: [],
     processedRequestIds: [],
     currencyHistory: [],
     emergencyFund: { current: 0, monthsTarget: 3, configured: false },
@@ -165,6 +166,29 @@ export function buildEmptyState() {
 // Estado de demostración (datos ficticios de "Nicolás"), solo para que
 // alguien pueda explorar la app sin cargar sus propios datos. Nunca se
 // carga automáticamente: hay que pedirlo explícitamente desde Configuración.
+// Presupuesto de ejemplo para el modo demostración: un viaje dentro de 2 semanas.
+function buildDemoBudget() {
+  const start = new Date();
+  start.setDate(start.getDate() + 14);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 4);
+  const iso = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return {
+    id: "budget-demo-viaje",
+    name: "Viaje a Cochabamba",
+    startDate: iso(start),
+    endDate: iso(end),
+    status: "active",
+    note: "",
+    createdAt: new Date().toISOString(),
+    items: [
+      { id: "bitem-demo-pasajes", name: "Pasajes", planned: 400 },
+      { id: "bitem-demo-hotel", name: "Hotel", planned: 900 },
+      { id: "bitem-demo-comida", name: "Comida", planned: 500 },
+    ],
+  };
+}
+
 export function buildDemoState() {
   return {
     schemaVersion: 2,
@@ -178,6 +202,7 @@ export function buildDemoState() {
     recurringExpenses: RECURRING_EXPENSES,
     recurringIncomes: RECURRING_INCOMES,
     savingsContributions: [],
+    budgets: [buildDemoBudget()],
     processedRequestIds: [],
     currencyHistory: [],
     emergencyFund: EMERGENCY_FUND,

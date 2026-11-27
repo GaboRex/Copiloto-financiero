@@ -45,6 +45,7 @@ export function migrateState(savedState) {
     debts,
     recurringIncomes: (savedState.recurringIncomes || []).map((item) => ({ frequency: "mensual", active: true, ...item })),
     savingsContributions: savedState.savingsContributions || [],
+    budgets: (savedState.budgets || []).map((budget) => ({ status: "active", note: "", startDate: null, endDate: null, ...budget, items: budget.items || [] })),
     processedRequestIds: savedState.processedRequestIds || [],
     currencyHistory: savedState.currencyHistory || [],
     emergencyFund: { ...empty.emergencyFund, ...(savedState.emergencyFund || {}) },

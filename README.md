@@ -57,6 +57,7 @@ Los datos se guardan solo en ese navegador. Sirve para trabajar la UI sin creden
 2. En **SQL Editor**, ejecutar en orden el contenido de:
    1. `supabase/migrations/202609150001_finance_auth_schema.sql`
    2. `supabase/migrations/202611200001_incremental_sync.sql`
+   3. `supabase/migrations/202611270001_budgets.sql` (presupuestos por proyecto o evento)
 
    Alternativa con CLI (no necesita Docker): `npx supabase login`, `npx supabase link --project-ref <ref>` y `npx supabase db push`.
 3. En **Project Settings > API** copiar la *Project URL* y la clave *anon public*.

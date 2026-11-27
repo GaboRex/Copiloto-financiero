@@ -7,6 +7,7 @@ import { FinancialScoreGauge } from "../components/finance/FinancialScoreGauge.j
 import { InsightCard } from "../components/finance/cards.jsx";
 import { SectionGuide } from "../components/SectionGuide.jsx";
 import { useCountUp } from "../hooks/useCountUp.js";
+import { BudgetsOverview } from "../components/budgets/BudgetsPanel.jsx";
 import { calculateAvailableMoney, calculateFinancialHealth, getEmergencyFundStatus, getSavingsRealized, getUpcomingCommitments, hasFinancialData } from "../services/financial/calculations.js";
 import { getFinancialDataReadiness } from "../services/financial/readiness.js";
 import { getMainInsight } from "../services/financial/insights.js";
@@ -32,6 +33,7 @@ export default function Inicio() {
       <HighlightedAccess icon={ShoppingBag} title="¿Puedo comprarlo?" text="Evalúa una compra antes de hacerla." onClick={() => navigate("/puedo-comprarlo")} />
       <HighlightedAccess icon={Bot} title="Preguntar al Copiloto" text="Respuestas con tus propias cifras." onClick={() => navigate("/copiloto")} />
     </div>
+    <BudgetsOverview onOpen={() => navigate("/planes?tab=presupuestos")} />
     {showSummary ? <FinancialSummary state={state} navigate={navigate} readiness={readiness} /> : null}
     <WhatYouCanDo state={state} navigate={navigate} />
     <SectionGuide section="home" />

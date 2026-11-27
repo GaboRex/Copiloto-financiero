@@ -1,7 +1,7 @@
 // Calcula qué cambió entre dos estados financieros para enviar al servidor solo
 // eso (altas/ediciones y bajas por id) en lugar del estado completo.
 
-const COLLECTIONS = ["accounts", "goals", "transactions", "debts", "recurringExpenses", "recurringIncomes", "savingsContributions"];
+const COLLECTIONS = ["accounts", "goals", "budgets", "transactions", "debts", "recurringExpenses", "recurringIncomes", "savingsContributions"];
 const SETTINGS_KEYS = ["emergencyFund", "financialSettings", "sectionGuidesSeen", "currencyHistory"];
 // El saldo lo calcula el servidor a partir del libro; no se considera un cambio de la cuenta.
 const IGNORED_FIELDS = { accounts: new Set(["balance"]) };

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { BudgetsPanel } from "../components/budgets/BudgetsPanel.jsx";
 import { useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { useFinanceState, useFinanceDispatch } from "../context/FinanceContext.jsx";
@@ -11,6 +12,7 @@ import { fmtBs, fmtPct } from "../services/financial/format.js";
 import { SectionGuide } from "../components/SectionGuide.jsx";
 
 const TABS = [
+  { id: "presupuestos", label: "Presupuestos" },
   { id: "objetivos", label: "Objetivos" },
   { id: "emergencia", label: "Fondo de emergencia" },
   { id: "deudas", label: "Deudas" },
@@ -22,24 +24,26 @@ function currencyLabel(currency) {
 
 export default function Planes() {
   const [params] = useSearchParams();
-  const [tab, setTab] = useState(params.get("tab") || "objetivos");
+  // Presupuestos primero: es lo que más se usa en el día a día.
+  const [tab, setTab] = useState(params.get("tab") || (params.get("nuevo") ? "objetivos" : "presupuestos"));
 
   return (
     <div className="flex flex-col gap-5">
       <h1 className="font-display text-2xl font-semibold">Planes</h1>
-      <div role="tablist" aria-label="Secciones de planes" className="flex gap-1 border-b border-line">
+      <div role="tablist" aria-label="Secciones de planes" className="flex gap-1 border-b border-line overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
         {TABS.map((t) => (
           <button
             key={t.id}
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 sm:flex-none px-3 min-h-[44px] text-sm -mb-px border-b-2 focus-visible:outline-none focus-visible:bg-paper-raised ${tab === t.id ? "border-teal text-ink font-medium" : "border-transparent text-ink-soft hover:text-ink"}`}
+            className={`shrink-0 whitespace-nowrap px-3 min-h-[44px] text-sm -mb-px border-b-2 focus-visible:outline-none focus-visible:bg-paper-raised ${tab === t.id ? "border-teal text-ink font-medium" : "border-transparent text-ink-soft hover:text-ink"}`}
           >
             {t.label}
           </button>
         ))}
       </div>
+      {tab === "presupuestos" && <BudgetsPanel />}
       {tab === "objetivos" && <Objetivos autoOpen={Boolean(params.get("nuevo"))} />}
       {tab === "emergencia" && <FondoEmergencia />}
       {tab === "deudas" && <Deudas />}
